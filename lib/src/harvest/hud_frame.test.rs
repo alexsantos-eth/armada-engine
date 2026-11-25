@@ -153,17 +153,20 @@ fn only_the_full_inventory_note_reaches_the_kit() {
 fn each_gain_flies_from_the_player() {
     let items = items();
     let yields = [
-        HarvestYield {
+        StackGain {
+            slot: 2,
             item: "copper_ore".into(),
             amount: 2,
         },
-        HarvestYield {
+        StackGain {
+            slot: 0,
             item: "stone".into(),
             amount: 1,
         },
     ];
     let gains = gains(&yields, &items, (0.5, 0.25));
     assert_eq!(gains.len(), 2);
+    assert_eq!([gains[0].slot, gains[1].slot], [2, 0]);
     assert_eq!(
         (
             gains[0].item.as_str(),
@@ -173,6 +176,53 @@ fn each_gain_flies_from_the_player() {
         ("copper_ore", "Cobre", 2)
     );
     assert_eq!((gains[1].x, gains[1].y), (0.5, 0.25));
+}
+
+#[test]
+fn collecting_more_wood_keeps_a_full_stack_at_its_limit_during_the_flight() {
+    let items = items();
+    let mut carried = Carried::starting(4, &items);
+    let limit = items.item("wood").unwrap().stack;
+    carried.inventory.add("wood", limit, &items);
+    let mut drops = iso::drops::Drops::default();
+    drops.spawn(
+        iso::drops::Felled {
+            id: "tree@0,0",
+            anchor: WorldCoord { x: 0, y: 0 },
+            elevation: 0,
+        },
+        &[HarvestYield {
+            item: "wood".into(),
+            amount: 3,
+        }],
+    );
+    let picked = drops.collect(
+        iso::harvest::Feet {
+            at: iso::projection::GridPoint { x: 0.0, y: 0.0 },
+            elevation: 0.0,
+        },
+        &mut carried.inventory,
+        &items,
+        iso::drops::PICKUP_DELAY_TICKS,
+    );
+    let frame = hud_frame(&carried, &items, &HarvestStatus::Idle, None, false, None);
+    let mut hud = crate::ui::ClayHud::default();
+    hud.apply(
+        &frame,
+        &gains(&picked.stacks, &items, (0.5, 0.5)),
+        (800.0, 600.0),
+    );
+    let full = frame.slots[0].as_ref().unwrap();
+    let overflow = frame.slots[1].as_ref().unwrap();
+    assert_eq!(hud.shown_count(0, full.count), limit);
+    assert_eq!(hud.shown_count(1, overflow.count), 0);
+    assert_eq!(hud.flights.len(), 1);
+    assert_eq!(hud.flights[0].slot, 1);
+    hud.advance(1_000.0);
+    assert_eq!(hud.shown_count(0, full.count), limit);
+    assert_eq!(hud.shown_count(1, overflow.count), 3);
+    assert!(hud.bump_age(0).is_none());
+    assert!(hud.bump_age(1).is_some());
 }
 
 #[test]

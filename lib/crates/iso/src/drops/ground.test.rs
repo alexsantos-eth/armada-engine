@@ -102,11 +102,38 @@ fn what_does_not_fit_stays_on_the_ground() {
     let feet = Feet { at, elevation: 2.0 };
     let first = drops.collect(feet, &mut inventory, &items, PICKUP_DELAY_TICKS);
     assert_eq!(first.gained, yields(&[("wood", 50)]));
+    assert_eq!(first.stacks[0].amount, 50);
     assert!(first.refused);
     assert_eq!(drops.list()[0].amount, 10);
     let again = drops.collect(feet, &mut inventory, &items, PICKUP_DELAY_TICKS);
     assert!(again.gained.is_empty());
+    assert!(again.stacks.is_empty());
     assert!(again.refused);
+}
+
+#[test]
+fn a_pickup_reports_the_partial_stack_and_new_slots_it_fills() {
+    let items = items();
+    let mut inventory = Inventory::new(4);
+    inventory.add("wood", 48, &items);
+    inventory.add("stone", 1, &items);
+    let mut drops = Drops::default();
+    drops.spawn(felled(), &yields(&[("wood", 55)]));
+    let feet = Feet {
+        at: drops.list()[0].at,
+        elevation: 2.0,
+    };
+    let picked = drops.collect(feet, &mut inventory, &items, PICKUP_DELAY_TICKS);
+    assert_eq!(picked.gained, yields(&[("wood", 55)]));
+    assert_eq!(
+        picked.stacks,
+        [(0, 2), (2, 50), (3, 3)].map(|(slot, amount)| StackGain {
+            slot,
+            item: "wood".into(),
+            amount,
+        }),
+    );
+    assert!(!picked.refused);
 }
 
 #[test]

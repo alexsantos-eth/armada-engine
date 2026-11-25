@@ -24,9 +24,10 @@ El inventario no decide qué se recolecta ni cuándo: eso es `iso::harvest`. Las
   - Firma: `pub fn count(&self, item: &str) -> u32 {`
 - [`Inventory::add`](slots.rs#L75) — Guarda hasta `amount` unidades (primero completa pilas, luego abre slots) y devuelve lo que no cupo; un item que el catálogo no tiene nunca cabe.
   - Firma: `pub fn add(&mut self, item: &str, amount: u32, items: &ItemCatalog) -> u32 {`
-- [`Inventory::fits`](slots.rs#L107) — Si todos los rendimientos caben a la vez.
+- [`Inventory::add_with_slots`](slots.rs#L80) — Variante interna que informa el índice y las unidades depositadas en cada slot.
+- [`Inventory::fits`](slots.rs#L123) — Si todos los rendimientos caben a la vez.
   - Firma: `pub fn fits(&self, yields: &[HarvestYield], items: &ItemCatalog) -> bool {`
-- [`Inventory::take`](slots.rs#L116) — Saca unidades desde el último slot; si no hay suficientes no saca nada.
+- [`Inventory::take`](slots.rs#L132) — Saca unidades desde el último slot; si no hay suficientes no saca nada.
   - Firma: `pub fn take(&mut self, item: &str, amount: u32) -> bool {`
 
 #### Constantes

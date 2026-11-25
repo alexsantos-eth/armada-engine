@@ -54,7 +54,7 @@ pub(crate) struct ClayHud {
     pub(crate) bubble: Option<Bubble>,
     pub(crate) flights: Vec<Flight>,
     bumps: HashMap<usize, f64>,
-    in_air: HashMap<String, u32>,
+    in_air: HashMap<usize, u32>,
     note: Option<String>,
     /// Time since the HUD started, for looping animations.
     pub(crate) clock_ms: f64,
@@ -88,23 +88,17 @@ impl ClayHud {
     }
 
     /// Takes this frame's HUD state and pick-ups on a screen of `size`: each gain starts a
-    /// flight to the slot holding its item (or the first empty one); a new full-inventory note
+    /// flight to the slot that received the units; a new full-inventory note
     /// pops a warning.
     pub(crate) fn apply(&mut self, frame: &UiFrame, gains: &[UiGain], size: (f32, f32)) {
         for gain in gains {
             let from = (gain.x * size.0, gain.y * size.1);
-            let slot = frame
-                .slots
-                .iter()
-                .position(|s| s.as_ref().is_some_and(|stack| stack.item == gain.item))
-                .or_else(|| frame.slots.iter().position(Option::is_none))
-                .unwrap_or(0);
-            *self.in_air.entry(gain.item.clone()).or_default() += gain.amount;
+            *self.in_air.entry(gain.slot).or_default() += gain.amount;
             self.flights.push(Flight {
                 item: gain.item.clone(),
                 amount: gain.amount,
                 from,
-                slot,
+                slot: gain.slot,
                 age_ms: 0.0,
             });
         }
@@ -133,29 +127,25 @@ impl ClayHud {
             *age += elapsed_ms;
         }
         self.bumps.retain(|_, age| *age < motion::BUMP_MS);
-        let mut landed = Vec::new();
         self.flights.retain_mut(|flight| {
             flight.age_ms += elapsed_ms;
             let done = flight.age_ms >= motion::FLY_MS;
             if done {
-                landed.push((flight.item.clone(), flight.amount, flight.slot));
+                if let Some(left) = self.in_air.get_mut(&flight.slot) {
+                    *left = left.saturating_sub(flight.amount);
+                    if *left == 0 {
+                        self.in_air.remove(&flight.slot);
+                    }
+                }
+                self.bumps.insert(flight.slot, 0.0);
             }
             !done
         });
-        for (item, amount, slot) in landed {
-            if let Some(left) = self.in_air.get_mut(&item) {
-                *left = left.saturating_sub(amount);
-                if *left == 0 {
-                    self.in_air.remove(&item);
-                }
-            }
-            self.bumps.insert(slot, 0.0);
-        }
     }
 
     /// The count a slot shows: what it holds minus what is still flying to it.
-    pub(crate) fn shown_count(&self, item: &str, count: u32) -> u32 {
-        count.saturating_sub(self.in_air.get(item).copied().unwrap_or(0))
+    pub(crate) fn shown_count(&self, slot: usize, count: u32) -> u32 {
+        count.saturating_sub(self.in_air.get(&slot).copied().unwrap_or(0))
     }
 
     /// How long slot `slot` has been bumping, if it is.

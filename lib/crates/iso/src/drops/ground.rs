@@ -53,10 +53,19 @@ pub struct Felled<'a> {
     pub elevation: i32,
 }
 
-/// What a pick-up took, and whether something in reach did not fit.
+/// Units accepted into one inventory slot while collecting a heap.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StackGain {
+    pub slot: usize,
+    pub item: String,
+    pub amount: u32,
+}
+
+/// What a pick-up took by heap and by destination slot, and whether something did not fit.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Collected {
     pub gained: Vec<HarvestYield>,
+    pub stacks: Vec<StackGain>,
     pub refused: bool,
 }
 
@@ -124,7 +133,13 @@ impl Drops {
             if !near {
                 continue;
             }
-            let left = inventory.add(&drop.item, drop.amount, items);
+            let left = inventory.add_with_slots(&drop.item, drop.amount, items, |slot, amount| {
+                collected.stacks.push(StackGain {
+                    slot,
+                    item: drop.item.clone(),
+                    amount,
+                });
+            });
             let taken = drop.amount - left;
             if taken > 0 {
                 collected.gained.push(HarvestYield {

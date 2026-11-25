@@ -42,11 +42,11 @@ La hotbar, el globo de aviso, la nota y las ganancias los pinta el HUD de arcill
 
 Lo que el HUD sabe de la recolección. Puro; se prueba en `hud_frame.test.rs`.
 
-- [`hud_frame`](hud_frame.rs#L38) — El fotograma del HUD: cada slot con id, nombre y cantidad; la acción del `HarvestStatus` con herramienta (`Talar`/`axe`, `Picar`/`pickaxe`, `Atrapar`/`net`, `Recoger`/`hand`, según la regla); el progreso en centésimas mientras se trabaja, el punto arriba del jugador donde satan y el material que va a soltar (el primer rendimiento del target, nombre del `ItemDef`); de la nota solo pasa «Inventario lleno», porque las ganancias van aparte.
+- [`hud_frame`](hud_frame.rs#L39) — El fotograma del HUD: cada slot con id, nombre y cantidad; la acción del `HarvestStatus` con herramienta (`Talar`/`axe`, `Picar`/`pickaxe`, `Atrapar`/`net`, `Recoger`/`hand`, según la regla); el progreso en centésimas mientras se trabaja, el punto arriba del jugador donde satan y el material que va a soltar (el primer rendimiento del target, nombre del `ItemDef`); de la nota solo pasa «Inventario lleno», porque las ganancias van aparte.
   - Firma: `pub(crate) fn hud_frame( carried: &Carried, items: &ItemCatalog, status: &HarvestStatus, note: Option<&str>, touch: bool, progress_at: Option<(f32, f32)>, ) -> UiFrame {`
-- [`gains`](hud_frame.rs#L83) — Una ganancia por rendimiento recogido, con id, nombre, cantidad y el punto de salida.
-  - Firma: `pub(crate) fn gains(yields: &[HarvestYield], items: &ItemCatalog, at: (f32, f32)) -> Vec<UiGain> {`
-- [`screen_share`](hud_frame.rs#L98) — Un punto de pantalla como fracción del ancho y el alto, recortado a la pantalla; el centro si la pantalla no tiene tamaño.
+- [`gains`](hud_frame.rs#L98) — Una ganancia por depósito en un slot, con su índice, el ítem, la cantidad y el punto de salida.
+  - Firma: `pub(crate) fn gains(stacks: &[StackGain], items: &ItemCatalog, at: (f32, f32)) -> Vec<UiGain> {`
+- [`screen_share`](hud_frame.rs#L114) — Un punto de pantalla como fracción del ancho y el alto, recortado a la pantalla; el centro si la pantalla no tiene tamaño.
   - Firma: `pub(crate) fn screen_share(x: f64, y: f64, width: f32, height: f32) -> (f32, f32) {`
 
 ### `impact.rs`

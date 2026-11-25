@@ -17,7 +17,7 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 - [`UiStack`](frame.rs#L6) — Una pila en un slot: id del item, nombre y cantidad.
 - [`UiAction`](frame.rs#L14) — El botón de acción del HUD: la herramienta y el verbo del harvest.
 - [`UiFrame`](frame.rs#L21) — Lo que muestra el HUD este fotograma: visible, controles táctiles en pantalla, slots, progreso (0–1), el punto arriba del jugador dónde satan, el material que va a soltar y nota; acción del botón de acción.
-- [`UiGain`](frame.rs#L38) — Una recogida: item, nombre, cantidad y de dónde sale volando, como fracción de la pantalla.
+- [`UiGain`](frame.rs#L38) — Un depósito de la recogida con su slot, ítem, nombre, cantidad y punto de salida en fracciones de pantalla.
 
 ### `skin.rs`
 
@@ -73,13 +73,13 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 - [`ClayHud`](hud.rs#L53) — El estado de las animaciones, del botón de acción y del inventario táctil.
 - [`ClayHud::update_inventory`](hud.rs#L69) — Alterna el inventario con un toque nuevo sobre la mochila y devuelve el sonido de apertura o cierre.
   - Firma: `pub(crate) fn update_inventory(&mut self, layout: &HudLayout, touches: &[Touch]) -> Option<SoundEvent>`
-- [`ClayHud::apply`](hud.rs#L93) — Toma el fotograma y las ganancias: cada ganancia lanza un vuelo al slot que tiene el ítem (o al primero vacío); una nota nueva de inventario lleno abre el globo de aviso.
+- [`ClayHud::apply`](hud.rs#L93) — Toma el fotograma y las ganancias: cada ganancia lanza un vuelo al slot donde se depositaron las unidades; una nota nueva de inventario lleno abre el globo de aviso.
   - Firma: `pub(crate) fn apply(&mut self, frame: &UiFrame, gains: &[UiGain], size: (f32, f32)) {`
-- [`ClayHud::advance`](hud.rs#L124) — Envejece todo; un vuelo que aterriza entrega su cuenta y hace rebotar el slot.
+- [`ClayHud::advance`](hud.rs#L118) — Envejece todo; un vuelo que aterriza entrega su cuenta y hace rebotar el slot.
   - Firma: `pub(crate) fn advance(&mut self, elapsed_ms: f64) {`
-- [`ClayHud::shown_count`](hud.rs#L157) — Lo que muestra un slot: su cuenta menos lo que aún vuela hacia él.
-  - Firma: `pub(crate) fn shown_count(&self, item: &str, count: u32) -> u32 {`
-- [`ClayHud::bump_age`](hud.rs#L162) — Cuánto lleva rebotando un slot, si rebota.
+- [`ClayHud::shown_count`](hud.rs#L147) — Lo que muestra un slot: su cuenta menos lo que aún vuela hacia él.
+  - Firma: `pub(crate) fn shown_count(&self, slot: usize, count: u32) -> u32 {`
+- [`ClayHud::bump_age`](hud.rs#L152) — Cuánto lleva rebotando un slot, si rebota.
   - Firma: `pub(crate) fn bump_age(&self, slot: usize) -> Option<f64> {`
 - [`Flight`](hud.rs#L29) — Un vuelo en curso: item, cantidad, de dónde sale, a qué slot va (o, con los controles táctiles, a la mochila) y a cuánto tiempo.
 - [`BubbleContent`](hud.rs#L16), [`Bubble`](hud.rs#L22) — Qué dice el globo de aviso.
