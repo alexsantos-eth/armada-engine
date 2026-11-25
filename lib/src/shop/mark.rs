@@ -10,8 +10,8 @@ const BOB_PX: f32 = 7.0;
 /// How much bigger the icon pulses while the player is at the market, at most.
 const NEAR_PULSE: f32 = 0.14;
 /// How much of the market's tile width the icon takes, and its limits in pixels.
-const SIDE_OF_TILE: f32 = 0.55;
-const SIDE_LIMITS: (f32, f32) = (34.0, 76.0);
+const SIDE_OF_TILE: f32 = 0.32;
+const SIDE_LIMITS: (f32, f32) = (22.0, 46.0);
 
 /// One market on screen this frame: where its icon rests.
 #[derive(Clone, Copy, Debug, PartialEq)]
