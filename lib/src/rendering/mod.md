@@ -274,3 +274,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 - [`FRAGMENT`](scene_material.rs#L39) — Fragmento GLSL (`#version 100`) del shader de material.
   - Declaración: `const FRAGMENT: &str = r#"#version 100 #ifdef GL_FRAGMENT_PRECISION_HIGH precision highp float;`
+
+### `backdrop.rs`
+
+- `fade(blur, open, frame_ms)` — Los píxeles de desenfoque tras un menú abierto en este fotograma: sube hasta `MENU_BLUR_PX` mientras hay un menú abierto (tienda, mochila) y baja a cero al cerrarse. La pasada de presentación lo aplica a toda la escena (`MenuBlur` en `grade.rs`).

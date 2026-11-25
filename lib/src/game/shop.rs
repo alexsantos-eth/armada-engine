@@ -15,9 +15,7 @@ use iso::time::clock_time;
 use macroquad::prelude::*;
 
 use crate::game::Game;
-use crate::shop::{
-    Hit, RowAction, Shop, ShopEvent, ShopKey, ShopLayout, ShopRow, ShopStock, Tab, mark_rect,
-};
+use crate::shop::{Hit, RowAction, Shop, ShopEvent, ShopKey, ShopLayout, ShopRow, ShopStock, Tab};
 use crate::ui::{ClaySkin, ShopFrame};
 
 /// What the shop is asked to do in a frame, whoever asked.
@@ -43,17 +41,10 @@ fn pointer_taps() -> Vec<(f32, f32)> {
     Vec::new()
 }
 
-/// The keys of a real keyboard this frame, as shop commands (`open` says whether the shop is
-/// already up, which changes what F and the arrows mean).
+/// The keys of a real keyboard this frame, as shop commands while the shop is up (`open`).
+/// Opening it is the gather action, which `update_shop` reads from the frame's input.
 fn keyboard(open: bool) -> Vec<Command> {
     let mut commands = Vec::new();
-    if is_key_pressed(KeyCode::F) {
-        commands.push(if open {
-            Command::Key(ShopKey::Close)
-        } else {
-            Command::Open
-        });
-    }
     if !open {
         return commands;
     }
@@ -143,6 +134,9 @@ impl Game {
             self.market = Market::open(&self.economy, self.world_seed, day);
         }
         self.merchant = self.merchant_in_reach();
+        // The gather action (E, or the round button on touch) opens the shop next to a market.
+        let gather_pressed = input.gather_held && !self.gather_was_held;
+        self.gather_was_held = input.gather_held;
         let mut commands: Vec<Command> = std::mem::take(&mut self.scripted_trade)
             .into_iter()
             .map(scripted)
@@ -152,14 +146,10 @@ impl Game {
             for (x, y) in pointer_taps() {
                 if self.shop.is_some() {
                     commands.push(Command::Click(x, y));
-                } else if self.merchant.is_some()
-                    && self
-                        .market_marks
-                        .iter()
-                        .any(|mark| mark.near && mark_rect(mark).contains(vec2(x, y)))
-                {
-                    commands.push(Command::Open);
                 }
+            }
+            if gather_pressed && self.shop.is_none() && self.merchant.is_some() {
+                commands.push(Command::Open);
             }
         }
         for command in commands {
@@ -254,9 +244,10 @@ impl Game {
             }
             result.unwrap_or_else(str::to_owned)
         } else {
-            row.note.unwrap_or("No se puede").to_owned()
+            // A greyed-out row only says why when it has something to say ("Ya la tienes").
+            row.note.map(str::to_owned).unwrap_or_default()
         };
-        if let Some(shop) = self.shop.as_mut() {
+        if let Some(shop) = self.shop.as_mut().filter(|_| !said.is_empty()) {
             shop.say(said);
         }
         if matches!(row.action, RowAction::Sell { .. }) {
@@ -287,7 +278,7 @@ impl Game {
             crate::ui::draw_market_marks(skin, &self.market_marks, self.clay_hud.clock_ms);
         }
         if self.wallet.coins() > 0 || open.is_some() {
-            crate::ui::draw_wallet(skin, self.wallet.coins(), self.economy.currency());
+            crate::ui::draw_wallet(skin, self.wallet.coins());
         }
         if let Some(frame) = open {
             let layout = ShopLayout::new(

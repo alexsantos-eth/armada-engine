@@ -46,7 +46,7 @@ fn the_sell_tab_lists_what_is_carried_and_paid_for() {
 }
 
 #[test]
-fn the_buy_tab_shows_the_shelf_and_why_a_tool_cannot_be_bought() {
+fn the_buy_tab_shows_the_shelf_and_greys_out_what_cannot_be_bought() {
     let (items, economy) = world();
     let market = market(&economy);
     let mut carried = Carried::starting(6, &items);
@@ -64,7 +64,9 @@ fn the_buy_tab_shows_the_shelf_and_why_a_tool_cannot_be_bought() {
     assert_eq!(buy.len(), market.offers().len());
     assert_eq!(buy[0].note, Some("Ya la tienes"));
     assert!(!buy[0].enabled);
-    assert_eq!(buy[1].note, Some("Faltan monedas"));
+    // Too poor for it: greyed out, with no words about why.
+    assert_eq!(buy[1].note, None);
+    assert!(!buy[1].enabled);
     assert!(
         buy.iter()
             .all(|row| row.is_tool && row.icon.starts_with("tool_"))

@@ -156,6 +156,10 @@ pub(crate) struct Game {
     pub(crate) market: iso::economy::Market,
     /// The shop the player has open, if any; never saved.
     pub(crate) shop: Option<crate::shop::Shop>,
+    /// Pixels of blur behind an open menu this frame (see `rendering::backdrop`).
+    pub(crate) menu_blur: f32,
+    /// Whether the gather action was held last frame, to tell a new press from a held one.
+    pub(crate) gather_was_held: bool,
     /// The merchant in reach this frame, if any.
     pub(crate) merchant: Option<iso::economy::Merchant>,
     /// The icons floating over the markets on screen, gathered while the entities are laid out.
@@ -565,6 +569,8 @@ impl Game {
             economy,
             wallet,
             shop: None,
+            menu_blur: 0.0,
+            gather_was_held: false,
             merchant: None,
             market_marks: Vec::new(),
             scripted_trade: Vec::new(),

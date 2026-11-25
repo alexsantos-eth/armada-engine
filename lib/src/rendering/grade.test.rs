@@ -170,7 +170,7 @@ fn a_negative_step_does_not_move_backwards() {
 fn the_grade_blurs_by_the_depth_map_and_not_by_the_height_on_screen() {
     let fragment = fragment();
     assert!(fragment.contains(GRADE_DEPTH_GLSL));
-    assert!(fragment.contains("float radius = blurRadius(uv);"));
+    assert!(fragment.contains("float radius = max(blurRadius(uv), MenuBlur);"));
     assert!(fragment.contains("bokeh(uv, radius)"));
     assert!(fragment.contains(&crate::rendering::lens::lens_glsl()));
     assert!(!fragment.contains("TiltShiftFocusY"));

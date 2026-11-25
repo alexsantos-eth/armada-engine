@@ -40,6 +40,7 @@ fn the_frame_lists_every_slot_with_names() {
         None,
         false,
         None,
+        false,
     );
     assert!(frame.visible);
     assert_eq!(frame.slots.len(), 4);
@@ -61,7 +62,7 @@ fn a_tree_in_sight_is_felled_with_the_axe() {
     let status = HarvestStatus::Ready {
         target: target("tree"),
     };
-    let action = hud_frame(&carried(&items), &items, &status, None, false, None)
+    let action = hud_frame(&carried(&items), &items, &status, None, false, None, false)
         .action
         .unwrap();
     assert_eq!(
@@ -85,6 +86,7 @@ fn work_under_way_reports_its_share_and_where_it_sits() {
         None,
         false,
         Some((10.0, 20.0)),
+        false,
     );
     assert_eq!(frame.progress, Some(0.33));
     assert_eq!(frame.progress_at, Some((10.0, 20.0)));
@@ -102,7 +104,7 @@ fn what_is_gathered_by_hand_is_picked_up() {
     let status = HarvestStatus::Ready {
         target: target("bush"),
     };
-    let action = hud_frame(&carried(&items), &items, &status, None, false, None)
+    let action = hud_frame(&carried(&items), &items, &status, None, false, None, false)
         .action
         .unwrap();
     assert_eq!(
@@ -121,7 +123,7 @@ fn a_missing_tool_shows_no_action() {
             tier: 3,
         },
     };
-    let frame = hud_frame(&carried(&items), &items, &status, None, true, None);
+    let frame = hud_frame(&carried(&items), &items, &status, None, true, None, false);
     assert_eq!(frame.action, None);
     assert_eq!(frame.progress, None);
 }
@@ -136,6 +138,7 @@ fn only_the_full_inventory_note_reaches_the_kit() {
         Some(crate::harvest::hotbar::FULL_NOTE),
         false,
         None,
+        false,
     );
     assert_eq!(full.note.as_deref(), Some("Inventario lleno"));
     let gained = hud_frame(
@@ -145,6 +148,7 @@ fn only_the_full_inventory_note_reaches_the_kit() {
         Some("+3 Madera"),
         false,
         None,
+        false,
     );
     assert_eq!(gained.note, None);
 }
@@ -205,7 +209,15 @@ fn collecting_more_wood_keeps_a_full_stack_at_its_limit_during_the_flight() {
         &items,
         iso::drops::PICKUP_DELAY_TICKS,
     );
-    let frame = hud_frame(&carried, &items, &HarvestStatus::Idle, None, false, None);
+    let frame = hud_frame(
+        &carried,
+        &items,
+        &HarvestStatus::Idle,
+        None,
+        false,
+        None,
+        false,
+    );
     let mut hud = crate::ui::ClayHud::default();
     hud.apply(
         &frame,
@@ -230,4 +242,14 @@ fn a_screen_point_becomes_a_share_of_the_screen() {
     assert_eq!(screen_share(400.0, 150.0, 800.0, 600.0), (0.5, 0.25));
     assert_eq!(screen_share(-20.0, 900.0, 800.0, 600.0), (0.0, 1.0));
     assert_eq!(screen_share(10.0, 10.0, 0.0, 0.0), (0.5, 0.5));
+}
+
+#[test]
+fn next_to_a_market_the_action_button_trades() {
+    let items = items();
+    let status = HarvestStatus::Idle;
+    let frame = hud_frame(&carried(&items), &items, &status, None, true, None, true);
+    let action = frame.action.expect("the button shows next to a market");
+    assert_eq!(action.verb, "Comerciar");
+    assert_eq!(action.tool, "hand");
 }
