@@ -16,7 +16,7 @@ use iso::projection::{
 use iso::scene_order::{CoverMask, DrawKey, Occludee, PlayerSheet, bounding_layout, cover_share};
 use macroquad::prelude::*;
 
-use crate::assets::sprites::{SpriteAtlas, SpriteDraw, ground_key, scene_key};
+use crate::assets::sprites::{Focus, SpriteAtlas, SpriteDraw, ground_key, scene_key};
 use crate::effects::ambient::SpawnEnv;
 use crate::effects::emitters::EffectSpot;
 use crate::effects::fire::FireSpot;
@@ -1004,25 +1004,15 @@ impl Game {
                         &mut self.draws,
                     );
                 }
-                match (&shade, upright) {
-                    (Some(shade), true) => self.draws.push(SpriteDraw::shaded(
-                        key,
-                        texture,
-                        frame,
-                        layout,
-                        shade.clone(),
-                    )),
-                    (None, true) => self
-                        .draws
-                        .push(SpriteDraw::whole(key, texture, frame, layout)),
-                    _ => self.draws.push(SpriteDraw::leaning(
-                        key,
-                        texture,
-                        frame,
-                        quad,
-                        shade.clone(),
-                    )),
-                }
+                let mut sprite = match (&shade, upright) {
+                    (Some(shade), true) => {
+                        SpriteDraw::shaded(key, texture, frame, layout, shade.clone())
+                    }
+                    (None, true) => SpriteDraw::whole(key, texture, frame, layout),
+                    _ => SpriteDraw::leaning(key, texture, frame, quad, shade.clone()),
+                };
+                sprite.focus = Focus::Player;
+                self.draws.push(sprite);
                 // The jetpack on its back, from its own sheet: one column, laid out from its own
                 // ink so it lands right whatever sheet the body is drawn from, and drawn just
                 // after the body. Swimming it is hidden: the pack has no pose lying down.
@@ -1053,28 +1043,27 @@ impl Game {
                         depth: key.depth + PLAYER_JETPACK_DEPTH,
                         layer: key.layer,
                     };
-                    match (&shade, upright) {
-                        (Some(shade), true) => self.draws.push(SpriteDraw::shaded(
+                    let mut sprite = match (&shade, upright) {
+                        (Some(shade), true) => SpriteDraw::shaded(
                             pack_key,
                             pack_texture,
                             pack_frame,
                             pack_layout,
                             shade.clone(),
-                        )),
-                        (None, true) => self.draws.push(SpriteDraw::whole(
-                            pack_key,
-                            pack_texture,
-                            pack_frame,
-                            pack_layout,
-                        )),
-                        _ => self.draws.push(SpriteDraw::leaning(
+                        ),
+                        (None, true) => {
+                            SpriteDraw::whole(pack_key, pack_texture, pack_frame, pack_layout)
+                        }
+                        _ => SpriteDraw::leaning(
                             pack_key,
                             pack_texture,
                             pack_frame,
                             pack_quad,
                             shade.clone(),
-                        )),
-                    }
+                        ),
+                    };
+                    sprite.focus = Focus::Player;
+                    self.draws.push(sprite);
                 }
             }
             None => draw_circle(feet.x as f32, feet.y as f32, 12.0, GOLD),

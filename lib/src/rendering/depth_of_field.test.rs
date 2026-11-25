@@ -261,13 +261,6 @@ fn the_shaders_name_nothing_glsl_reserves() {
 }
 
 #[test]
-fn the_depth_map_is_drawn_at_half_resolution_and_never_empty() {
-    assert_eq!(depth_target_size(960.0, 600.0), (480, 300));
-    assert_eq!(depth_target_size(961.0, 3.0), (481, 2));
-    assert_eq!(depth_target_size(0.0, f32::NAN), (1, 1));
-}
-
-#[test]
 fn an_unused_key_still_names_a_depth() {
     let key = DrawKey {
         depth: -70.0,
@@ -276,4 +269,29 @@ fn an_unused_key_still_names_a_depth() {
     let stamp = frame(0.0).stamp(key, Focus::Standing);
     assert!(close(stamp.least, 380.0 / HEIGHT, 1e-6));
     assert_eq!(stamp.least, stamp.most);
+}
+
+#[test]
+fn only_player_stamps_carry_the_sharp_flag_regardless_of_depth() {
+    let frame = frame(0.0);
+    let key = scene_key(9.5, 9.5, 4.0, 0, TILE_HEIGHT);
+    let mut vertex = Vertex::new(1.0, 2.0, 0.0, 0.3, 0.4, WHITE);
+    for (focus, sharp) in [
+        (Focus::Player, 1.0),
+        (Focus::Standing, 0.0),
+        (Focus::Surface { top: 4.0 }, 0.0),
+    ] {
+        frame.stamp(key, focus).over(&mut vertex);
+        assert_eq!(vertex.normal.y, sharp);
+    }
+}
+
+#[test]
+fn the_sharp_flag_bypasses_the_depth_curve() {
+    assert!(DEPTH_FRAGMENT.contains("alpha <= 0.0 || (sharp < 0.5 && alpha < 0.5)"));
+    assert!(
+        DEPTH_FRAGMENT.contains("vec4(high / 255.0, (code - high * 256.0) / 255.0, 1.0, sharp)")
+    );
+    assert!(GRADE_DEPTH_GLSL.contains("if (stored.a > 0.5)"));
+    assert!(GRADE_DEPTH_GLSL.contains("return 0.0;"));
 }

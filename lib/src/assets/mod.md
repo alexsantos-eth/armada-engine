@@ -124,14 +124,14 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 - [`ground_ellipse`](sprites.rs#L1047) — Una mancha blanda sobre el suelo, con degradado de núcleo a borde y sesgo de pantalla `shear`, recortada a las caras superiores de las casillas en las que puede apoyarse (`clip`); lista vacía de `clip` la pinta entera.
   - Firma: `pub fn ground_ellipse( key: DrawKey, centre: ScreenPoint, width: f64, height: f64, alpha: f32, shear: [[f64; 2]; 2], clip: Vec<[(f64, f64); 4]>, ) -> Self {`
 
-- [`draw_depth`](sprites.rs#L1089) — Redibuja la lista ya ordenada como profundidades para la profundidad de campo, con el material de profundidad ligado por quien llama: solo lo sólido y en pie, nunca sombras, reflejos ni sprites vistos a través (X-Ray).
+- [`draw_depth`](sprites.rs#L1091) — Redibuja la lista ya ordenada como profundidades para la profundidad de campo, con el material de profundidad ligado por quien llama: solo lo sólido y en pie, nunca sombras, reflejos ni sprites vistos a través (X-Ray).
   - Firma: `pub fn draw_depth(atlas: &mut SpriteAtlas, draws: &[SpriteDraw], frame: &DepthFrame) {`
 
 - [`SpriteDraw::on_surface`](sprites.rs#L840) — Marca el draw como bloque de terreno cuya columna acaba en `top` (`Focus::Surface`).
   - Firma: `pub fn on_surface(mut self, top: f64) -> Self {`
 
-- [`Focus`](sprites.rs#L823) — Cómo coloca en profundidad un draw la pasada de profundidad de campo: `Standing` (todo el sprite a la profundidad de su casilla) o `Surface { top }` (cara superior leída píxel a píxel).
-  - Declaración: `pub enum Focus { Standing, Surface { top: f64 } }`
+- [`Focus`](sprites.rs#L823) — Cómo coloca en profundidad un draw la pasada de profundidad de campo: `Standing` (todo el sprite a la profundidad de su casilla) `Surface { top }` (cara superior leída píxel a píxel) o `Player` (píxeles visibles con radio de desenfoque cero).
+  - Declaración: `pub enum Focus { Standing, Player, Surface { top: f64 } }`
 
 - [`draw_sorted`](sprites.rs#L1072) — Ordena los sprites encolados de lejos a cerca y los dibuja, con `material` enlazado durante todo el proceso.
   - Firma: `pub fn draw_sorted( atlas: &mut SpriteAtlas, material: Option<&crate::rendering::scene_material::SceneMaterial>, draws: &mut [SpriteDraw], ) {`

@@ -19,7 +19,11 @@ attribute vec4 color0;
 attribute vec4 normal;
 
 varying lowp vec4 color;
-varying lowp vec2 uv;
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+varying highp vec2 uv;
+#else
+varying mediump vec2 uv;
+#endif
 varying vec4 data;
 
 uniform mat4 Model;
@@ -40,7 +44,11 @@ precision mediump float;
 #endif
 
 varying lowp vec4 color;
-varying lowp vec2 uv;
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+varying highp vec2 uv;
+#else
+varying mediump vec2 uv;
+#endif
 varying vec4 data;
 
 uniform sampler2D Texture;
