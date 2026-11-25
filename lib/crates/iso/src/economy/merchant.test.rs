@@ -34,6 +34,12 @@ fn the_nearest_stall_in_reach_is_the_merchant() {
 fn a_stall_too_far_or_too_high_is_ignored() {
     let far = [stall(5, 0, 0)];
     assert_eq!(pick_merchant(feet(0.0, 0.0, 0.0), &far, &economy()), None);
+    // A few columns away is too far: the player has to be next to the stall.
+    let near_miss = [stall(4, 0, 0)];
+    assert_eq!(
+        pick_merchant(feet(0.0, 0.0, 0.0), &near_miss, &economy()),
+        None
+    );
     let high = [stall(1, 0, 3)];
     assert_eq!(pick_merchant(feet(0.0, 0.0, 0.0), &high, &economy()), None);
 }
