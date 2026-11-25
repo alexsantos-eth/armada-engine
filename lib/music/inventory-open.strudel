@@ -1,0 +1,6 @@
+note("[c5 g5] ~ ~ ~ ~ ~ ~ ~")
+  .s("triangle")
+  .attack(0.005)
+  .decay(0.075)
+  .sustain(0)
+  .gain(0.27)

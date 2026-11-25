@@ -43,6 +43,10 @@
   --ac-action: 104px;
   --ac-stick: 120px;
   --ac-stick-knob: 56px;
+  --ac-backpack-size: 84px;
+  --ac-backpack-leather: #a86231;
+  --ac-backpack-flap: #dc9353;
+  --ac-backpack-pocket: #c37b40;
   --ac-progress-width: 110px;
   --ac-progress-height: 9px;
   --ac-progress-inset: 2px;
@@ -239,11 +243,55 @@ button.ac-slot:hover { transform: translateY(-3px) rotate(-1.5deg); }
 /* ---------- mobile inventory unfolds from a backpack icon ---------- */
 
 .ac-backpack {
-  --ac-fill: #9c5e2c;
-  width: 84px;
-  height: 96px;
+  position: relative;
+  width: var(--ac-backpack-size);
+  height: var(--ac-backpack-size);
+}
+.ac-backpack > span {
+  position: absolute;
   box-sizing: border-box;
-  border-radius: 22px 18px 20px 24px / 20px 22px 18px 16px;
+  border: var(--ac-line) solid var(--ac-ink);
+  background: var(--ac-noise), var(--ac-fill);
+  background-blend-mode: multiply;
+}
+.ac-backpack__handle {
+  inset: 3% 35% 69%;
+  --ac-fill: var(--ac-backpack-flap);
+  border-radius: var(--ac-blob-small);
+}
+.ac-backpack__body {
+  inset: 24% 9% 8%;
+  --ac-fill: var(--ac-backpack-leather);
+  border-radius: var(--ac-blob);
+  box-shadow: var(--ac-shadow-x) var(--ac-shadow-y) 0 var(--ac-ink);
+  filter: url(#ac-wobble);
+}
+.ac-backpack__flap {
+  inset: 21% 10% 49%;
+  --ac-fill: var(--ac-backpack-flap);
+  border-radius: var(--ac-blob-small);
+}
+.ac-backpack__pocket {
+  inset: 59% 28% 17%;
+  --ac-fill: var(--ac-backpack-pocket);
+  border-radius: var(--ac-blob-small);
+}
+.ac-backpack__buckle {
+  inset: 42% 41% 43%;
+  --ac-fill: var(--ac-gold);
+  border-radius: var(--ac-blob-round);
+}
+.ac-backpack.is-open .ac-backpack__flap {
+  inset: 7% 13% 62%;
+  transform: rotate(-12deg);
+}
+.ac-backpack.is-open .ac-backpack__mouth {
+  inset: 27% 10% 46%;
+  --ac-fill: var(--ac-umber);
+  border-radius: var(--ac-blob-round);
+}
+.ac-backpack.is-open .ac-backpack__buckle {
+  inset: 12% 39% 74%;
 }
 
 /* ---------- comic bubble ---------- */

@@ -4,6 +4,9 @@
 
 use std::collections::HashMap;
 
+use iso::services::SoundEvent;
+use macroquad::prelude::{Touch, TouchPhase};
+
 use super::frame::{UiFrame, UiGain};
 use super::layout::HudLayout;
 use super::motion;
@@ -57,11 +60,33 @@ pub(crate) struct ClayHud {
     pub(crate) clock_ms: f64,
     /// Whether the action button is held this frame.
     pub(crate) held: bool,
-    /// Whether the inventory panel is open (mobile: a finger is down on the backpack icon).
+    /// Whether the backpack has unfolded the mobile inventory.
     pub(crate) inventory_open: bool,
 }
 
 impl ClayHud {
+    /// Toggles the panel once for a new press on the backpack and returns its sound.
+    pub(crate) fn update_inventory(
+        &mut self,
+        layout: &HudLayout,
+        touches: &[Touch],
+    ) -> Option<SoundEvent> {
+        let pressed = touches.iter().any(|touch| {
+            touch.phase == TouchPhase::Started
+                && layout.backpack_hit(touch.position.x, touch.position.y)
+        });
+        if !pressed {
+            return None;
+        }
+
+        self.inventory_open = !self.inventory_open;
+        Some(if self.inventory_open {
+            SoundEvent::InventoryOpen
+        } else {
+            SoundEvent::InventoryClose
+        })
+    }
+
     /// Takes this frame's HUD state and pick-ups on a screen of `size`: each gain starts a
     /// flight to the slot holding its item (or the first empty one); a new full-inventory note
     /// pops a warning.

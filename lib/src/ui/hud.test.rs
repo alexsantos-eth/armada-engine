@@ -110,3 +110,58 @@ fn the_full_inventory_note_pops_a_warning_once_while_it_lasts() {
         "a new note pops again"
     );
 }
+
+#[test]
+fn the_backpack_toggles_once_per_new_press_and_emits_the_matching_sound() {
+    use iso::services::SoundEvent;
+    use macroquad::prelude::{Touch, TouchPhase, vec2};
+
+    let mut hud = ClayHud::default();
+    let mobile = HudLayout::new(800.0, 400.0, 6, true);
+    let desktop = HudLayout::new(800.0, 400.0, 6, false);
+    let backpack = mobile.backpack.unwrap().center();
+    let touch = |id, phase, position| Touch {
+        id,
+        phase,
+        position,
+    };
+    let press = touch(1, TouchPhase::Started, backpack);
+
+    assert!(!hud.inventory_open);
+    assert_eq!(
+        hud.update_inventory(&desktop, std::slice::from_ref(&press)),
+        None
+    );
+    assert_eq!(
+        hud.update_inventory(
+            &mobile,
+            &[touch(1, TouchPhase::Started, vec2(200.0, 200.0))]
+        ),
+        None
+    );
+    assert_eq!(
+        hud.update_inventory(&mobile, &[press, touch(2, TouchPhase::Started, backpack)]),
+        Some(SoundEvent::InventoryOpen)
+    );
+
+    for phase in [
+        TouchPhase::Stationary,
+        TouchPhase::Moved,
+        TouchPhase::Ended,
+        TouchPhase::Cancelled,
+    ] {
+        assert_eq!(
+            hud.update_inventory(&mobile, &[touch(1, phase, backpack)]),
+            None
+        );
+        assert!(hud.inventory_open);
+    }
+    assert_eq!(hud.update_inventory(&mobile, &[]), None);
+    assert!(hud.inventory_open);
+
+    assert_eq!(
+        hud.update_inventory(&mobile, &[touch(3, TouchPhase::Started, backpack)]),
+        Some(SoundEvent::InventoryClose)
+    );
+    assert!(!hud.inventory_open);
+}

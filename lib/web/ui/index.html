@@ -10,7 +10,7 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800;900&display=swap"
     />
-    <link rel="stylesheet" href="armada-ui.css?v=2" />
+    <link rel="stylesheet" href="armada-ui.css?v=3" />
     <style>
       /* Catalogue page only: layout around the kit's components. */
       html, body {
@@ -147,6 +147,22 @@
           <div class="show" id="spec-action"></div>
           <h3>Botón de acción · <code>.ac-action</code></h3>
           <p>Redondo, se aplasta al pulsarlo y se mantiene presionado para trabajar. Icono de herramienta: hacha, pico, red o mano.</p>
+        </div>
+        <div class="specimen">
+          <div class="show">
+            <div class="ac-backpack" role="img" aria-label="Mochila cerrada">
+              <span class="ac-backpack__handle"></span><span class="ac-backpack__body"></span>
+              <span class="ac-backpack__flap"></span><span class="ac-backpack__pocket"></span>
+              <span class="ac-backpack__buckle"></span>
+            </div>
+            <div class="ac-backpack is-open" role="img" aria-label="Mochila abierta">
+              <span class="ac-backpack__handle"></span><span class="ac-backpack__body"></span>
+              <span class="ac-backpack__flap"></span><span class="ac-backpack__mouth"></span>
+              <span class="ac-backpack__pocket"></span><span class="ac-backpack__buckle"></span>
+            </div>
+          </div>
+          <h3>Mochila de inventario · <code>.ac-backpack</code></h3>
+          <p>En móvil, toca la mochila cerrada para abrir el inventario y la abierta para cerrarlo.</p>
         </div>
         <div class="specimen" id="spec-progress">
           <div class="show">

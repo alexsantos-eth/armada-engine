@@ -55,6 +55,7 @@ Toda superficie con contorno es `.ac-hand` más un relleno: `.ac-paper`, `.ac-cr
 | Chip | `.ac-chip` (+ `b` resaltado) | — |
 | Tarjeta | `.ac-card` | — |
 | Barra de inventario | `.ac-hotbar` | `new ArmadaUI.Hotbar(el, { keys, buttons })`, `.render(slots)`, `.slotFor(item)`, `.select(i)`, `.bump(slotEl)` |
+| Mochila de inventario táctil | `.ac-backpack`, `.is-open` | — |
 | Slot | `.ac-slot`, `__icon`, `__count`, `__key`; estados `.is-selected` / `[aria-pressed=true]`, `.is-empty`, `.is-bump` | lo crea `Hotbar` |
 | Globo de cómic | `.ac-bubble`, `__body`, `__tail`, `__amount`, `__icon`; `.is-warning`, `.is-in`, `.is-out` | `ArmadaUI.bubble(capa, { x, y, amount, item, name, text, warning, ms })` |
 | Botón de acción | `.ac-action`, `__icon`, `__label`, `__key`; `.is-pressed`, `.is-working` | `ArmadaUI.actionButton({ verb, tool, key })`, `ArmadaUI.setAction(btn, { verb, tool })`, `ArmadaUI.holdButton(btn, onChange, { refocus })` |
@@ -77,6 +78,10 @@ el mismo troquelado y las mismas animaciones.
 La barra de cosecha usa dos piezas troqueladas, `progress` para el fondo oscuro y
 `progress_fill` para el papel verde. El cliente estira el relleno dentro del borde según el
 avance y dibuja solo el fondo cuando el avance es cero.
+
+Las piezas `backpack_closed` y `backpack_open` indican el estado del inventario táctil. Un toque
+alterna la barra de slots y reproduce el sonido correspondiente. La barra conserva su estado al
+soltar el dedo.
 
 | Pieza | Qué es |
 | --- | --- |

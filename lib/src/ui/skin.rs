@@ -25,7 +25,8 @@ pub(crate) const REQUIRED_PIECES: &[&str] = &[
     "tool_pickaxe",
     "tool_net",
     "tool_hand",
-    "backpack",
+    "backpack_closed",
+    "backpack_open",
     "progress",
     "progress_fill",
 ];

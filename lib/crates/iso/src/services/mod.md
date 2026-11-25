@@ -20,7 +20,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 
 #### Funciones internas
 
-- [`play`](audio.rs#L27) — Reproduce un sonido de una sola vez.
+- [`play`](audio.rs#L86) — Reproduce un sonido de una sola vez.
   - Firma: `fn play(&mut self, event: SoundEvent);`
 
 - `play_with_volume` — Reproduce un sonido de una sola vez escalado a `volume` (0.0..=1.0). La implementación por defecto ignora el volumen y delega en `play`.
@@ -35,7 +35,7 @@ Esta sección cubre las funciones y constantes internas de producción. Describe
 - `set_volume` — Establece el volumen maestro (0.0..=1.0).
   - Firma: `fn set_volume(&mut self, volume: f64);`
 
-Los tipos de intercambio son `SoundEvent` (`Jump`, `AirJump`, `Land`, `Footstep`, `Climb`, `Skid`, `HarvestHit`, `HarvestFell`, `ItemDrop`, `ItemCollect`, `RabbitHop`, `CrabStep`, `BirdCall(n)` con `n < BIRD_CALLS`; es `Copy`), `SoundLoop` (`Walk(Footing)`, `Run(Footing)`, `Jetpack`), `Footing` (`Grass`, `Sand`, `Dirt`, `Stone`; `Footing::of` agrupa las superficies del terreno por cómo suenan: camino y gradas son `Stone`, tierra es `Dirt`, agua no tiene) y `AmbientLoop` (`Wind`, `Geyser`), los fondos que suenan todos a la vez, cada uno a su volumen.
+Los tipos de intercambio son `SoundEvent` (`Jump`, `AirJump`, `Land`, `Footstep`, `Climb`, `Skid`, `HarvestHit`, `HarvestFell`, `ItemDrop`, `ItemCollect`, `InventoryOpen`, `InventoryClose`, `RabbitHop`, `CrabStep`, `BirdCall(n)` con `n < BIRD_CALLS`; es `Copy`), `SoundLoop` (`Walk(Footing)`, `Run(Footing)`, `Jetpack`), `Footing` (`Grass`, `Sand`, `Dirt`, `Stone`; `Footing::of` agrupa las superficies del terreno por cómo suenan: camino y gradas son `Stone`, tierra es `Dirt`, agua no tiene) y `AmbientLoop` (`Wind`, `Geyser`), los fondos que suenan todos a la vez, cada uno a su volumen.
 
 ### `soundscape.rs`
 
