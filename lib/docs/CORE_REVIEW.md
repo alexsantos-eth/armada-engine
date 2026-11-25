@@ -226,3 +226,5 @@ El puente registraba un manipulador global de toques y devolvía éxito tras una
 sintética que WebKit reciente ignora. Ahora comunica el resultado de la API del navegador y
 los eventos de juego siguen en el cliente. Las pruebas del puente cubren ausencia de la API,
 solicitud aceptada, rechazo y excepción. Los contratos de simulación y guardado se mantienen.
+
+Revisión 2026-11-24 (inventario táctil, `src/ui/hud.rs` y `src/loops/frame_loop.rs`). El cambio corrige un fallo de nivel Medio en la entrada del HUD. El inventario conserva su estado en el cliente y alterna solo cuando Macroquad entrega un toque nuevo sobre la mochila. El servicio de audio existente reproduce el sonido de cada transición. La prueba del HUD cubre el estado después de soltar o arrastrar el dedo, los toques fuera del botón y los dos eventos de sonido. Chromium con emulación móvil confirmó los iconos y la reproducción completa de ambos sonidos, incluida la apertura como primer gesto. La simulación y el formato del guardado conservan sus contratos.

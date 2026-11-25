@@ -8,6 +8,7 @@
 //! steps all live in tested modules (`game::frame`, `game::scene`, `gui`), checked manually
 //! with `scripts/run-native.sh`.
 
+use iso::services::AudioService;
 use macroquad::prelude::*;
 
 use crate::assets::sprites::{draw_depth, draw_sorted};
@@ -145,12 +146,11 @@ pub(crate) async fn run(mut game: Game) {
             game.clay_hud.apply(&frame, &gains, (width, height));
             game.clay_hud.advance(frame_ms);
             game.clay_hud.held = frame.action.is_some() && action_pressed(&layout);
-            // The mobile inventory is a switch: open while a finger is down on the backpack
-            // icon, hide it when the finger lifts or moves off the icon.
-            game.clay_hud.inventory_open = touches().iter().any(|touch| {
-                !matches!(touch.phase, TouchPhase::Ended | TouchPhase::Cancelled)
-                    && layout.backpack_hit(touch.position.x, touch.position.y)
-            });
+            if frame.touch
+                && let Some(sound) = game.clay_hud.update_inventory(&layout, &touches())
+            {
+                game.audio.play(sound);
+            }
             crate::ui::draw_clay_hud(skin, &game.clay_hud, &frame, &layout);
             stick_tool = frame.action.as_ref().map(|action| action.tool.clone());
         } else if game.streams {

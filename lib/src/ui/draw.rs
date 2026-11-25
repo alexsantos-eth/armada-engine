@@ -365,13 +365,17 @@ fn draw_flights(skin: &ClaySkin, hud: &ClayHud, layout: &HudLayout) {
     }
 }
 
-/// Paints the backpack icon that unfolds the inventory on mobile.
+/// Paints the backpack icon with the current mobile inventory state.
 fn draw_backpack(skin: &ClaySkin, hud: &ClayHud, layout: &HudLayout) {
     let Some(rect) = layout.backpack.as_ref() else {
         return;
     };
-    let alpha = if hud.inventory_open { 1.0 } else { 0.85 };
-    draw_piece(skin, "backpack", *rect, alpha);
+    let piece = if hud.inventory_open {
+        "backpack_open"
+    } else {
+        "backpack_closed"
+    };
+    draw_piece(skin, piece, *rect, 1.0);
 }
 
 /// Paints the floating touch stick with the kit: the base, the knob (red while running) and,

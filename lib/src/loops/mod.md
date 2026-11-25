@@ -14,14 +14,14 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Reexportaciones
 
-- [`run`](frame_loop.rs#L56) — El bucle principal: corre el juego hasta que el jugador pide salir.
+- [`run`](frame_loop.rs#L67) — El bucle principal: corre el juego hasta que el jugador pide salir.
   - Firma: `pub(crate) use frame_loop::run;`
 
 ### `frame_loop.rs`
 
 #### Funciones y métodos
 
-- [`run`](frame_loop.rs#L56) — El bucle: mide el frame, deja actualizar el mundo o salir, limpia el fondo, ensambla la escena, dibuja ordenada, pinta nubes, (si la ruta lo permite) el overlay, los controles táctiles y alimenta el `PerfLog`.
+- [`run`](frame_loop.rs#L67) — El bucle: mide el frame, deja actualizar el mundo o salir, limpia el fondo, ensambla la escena, dibuja ordenada, pinta nubes, (si la ruta lo permite) el overlay, los controles táctiles y alimenta el `PerfLog`.
   - Firma: `pub(crate) async fn run(mut game: Game) {`
 
 ### `clock.rs`
@@ -75,14 +75,14 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Tipos y funciones internas
 
-- [`FrameMarks`](frame_loop.rs#L24) — Los instantes que el bucle toma en un frame (arranque, fin de simulación, fin de recogida, fin de dibujo), en segundos de macroquad.
+- [`FrameMarks`](frame_loop.rs#L35) — Los instantes que el bucle toma en un frame (arranque, fin de simulación, fin de recogida, fin de dibujo), en segundos de macroquad.
   - Firma: `struct FrameMarks { frame_start: f64, after_simulation: f64, after_collect: f64, after_draw: f64 }`
-- [`frame_sample`](frame_loop.rs#L33) — La muestra del frame para el perf log: cada sección cuesta el hueco entre dos marcas, en milisegundos; lleva aparte los milisegundos de lifecycle de chunks (`stream_ms`) y de horneado de sombras (`bake_ms`) que `FrameView` midió.
+- [`frame_sample`](frame_loop.rs#L44) — La muestra del frame para el perf log: cada sección cuesta el hueco entre dos marcas, en milisegundos; lleva aparte los milisegundos de lifecycle de chunks (`stream_ms`) y de horneado de sombras (`bake_ms`) que `FrameView` midió.
   - Firma: `fn frame_sample( frame_ms: f64, marks: FrameMarks, stream_ms: f64, bake_ms: f64, sprites: usize, chunks: usize, chunks_alive: usize, ) -> FrameSample {`
 
 ### `frame_loop.rs`
 
 #### Constantes internas
 
-- [`SCRIPTED_FRAME_MS`](frame_loop.rs#L21) — Cuánto vale un fotograma mientras hay un guion corriendo: un paso fijo de la simulación, en vez de lo que midiera la ventana, para que dos corridas de la misma escena den la misma imagen.
+- [`SCRIPTED_FRAME_MS`](frame_loop.rs#L32) — Cuánto vale un fotograma mientras hay un guion corriendo: un paso fijo de la simulación, en vez de lo que midiera la ventana, para que dos corridas de la misma escena den la misma imagen.
   - Declaración: `const SCRIPTED_FRAME_MS: f64 = iso::simulation::STEP_MS;`

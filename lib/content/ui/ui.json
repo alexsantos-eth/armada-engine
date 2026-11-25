@@ -16,10 +16,17 @@
     "text_muted": "#b7a988"
   },
   "pieces": {
-    "backpack": {
-      "file": "ui/backpack.png",
+    "backpack_closed": {
+      "file": "ui/backpack_closed.png",
       "width": 216,
-      "height": 240,
+      "height": 216,
+      "pad": 24,
+      "slice": 0
+    },
+    "backpack_open": {
+      "file": "ui/backpack_open.png",
+      "width": 216,
+      "height": 216,
       "pad": 24,
       "slice": 0
     },

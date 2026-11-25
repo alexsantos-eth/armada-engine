@@ -2,7 +2,7 @@
 
 use crate::terrain::TerrainMaterial;
 
-/// A sound event the core wants played.
+/// A one-shot sound requested by the game or its interface.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SoundEvent {
     Jump,
@@ -21,6 +21,10 @@ pub enum SoundEvent {
     ItemDrop,
     /// The player picks up a heap and it goes into the inventory.
     ItemCollect,
+    /// The backpack button opened the inventory.
+    InventoryOpen,
+    /// The backpack button closed the inventory.
+    InventoryClose,
     /// A rabbit lands a step of its stroll.
     RabbitHop,
     /// A crab sets a step down: a couple of clicks of its legs.

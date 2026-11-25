@@ -33,7 +33,20 @@
     </style>
   </head>
   <body>
-    <div data-piece="backpack" data-slice="0"><div class="ac-backpack"></div></div>
+    <div data-piece="backpack_closed" data-slice="0">
+      <div class="ac-backpack">
+        <span class="ac-backpack__handle"></span><span class="ac-backpack__body"></span>
+        <span class="ac-backpack__flap"></span><span class="ac-backpack__pocket"></span>
+        <span class="ac-backpack__buckle"></span>
+      </div>
+    </div>
+    <div data-piece="backpack_open" data-slice="0">
+      <div class="ac-backpack is-open">
+        <span class="ac-backpack__handle"></span><span class="ac-backpack__body"></span>
+        <span class="ac-backpack__flap"></span><span class="ac-backpack__mouth"></span>
+        <span class="ac-backpack__pocket"></span><span class="ac-backpack__buckle"></span>
+      </div>
+    </div>
     <div data-piece="progress" data-slice="0"><div class="ac-progress"></div></div>
     <div data-piece="progress_fill" data-slice="0"><div class="ac-progress__fill"></div></div>
     <div data-piece="hotbar" data-slice="34"><div class="panel ac-hand ac-umber" style="width: 180px; height: 110px"></div></div>

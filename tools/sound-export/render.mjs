@@ -42,6 +42,8 @@ const SOUNDS = [
   ['harvest-fell', 1],
   ['item-drop', 1],
   ['item-collect', 1],
+  ['inventory-open', 1],
+  ['inventory-close', 1],
   ['rabbit-hop', 1],
   ['crab-step', 1],
   ['bird-call-1', 1],

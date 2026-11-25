@@ -22,19 +22,19 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 ### `skin.rs`
 
 - [`REQUIRED_PIECES`](skin.rs#L9) — Las piezas que el HUD dibuja; el manifest debe traerlas todas.
-- [`MANIFEST_PATH`](skin.rs#L36) — `content/ui/ui.json`.
-- [`DISPLAY_FONT`](skin.rs#L192) — `content/fonts/Fredoka-Bold.ttf`, la fuente display del kit.
-- [`Piece`](skin.rs#L41) — Una pieza exportada: PNG, tamaño en píxeles de imagen, margen alrededor de la forma y borde de nine-slice.
-- [`UiManifest`](skin.rs#L52) — El manifest exportado: versión, escala, carpeta de iconos, colores y piezas.
-- [`Palette`](skin.rs#L62) — Los colores del kit que el HUD pinta a mano (tinta, crema, marrón, rojo, verde).
-- [`UiManifest::palette`](skin.rs#L72) — La paleta, o `None` si falta un token.
+- [`MANIFEST_PATH`](skin.rs#L35) — `content/ui/ui.json`.
+- [`DISPLAY_FONT`](skin.rs#L202) — `content/fonts/Fredoka-Bold.ttf`, la fuente display del kit.
+- [`Piece`](skin.rs#L40) — Una pieza exportada: PNG, tamaño en píxeles de imagen, margen alrededor de la forma y borde de nine-slice.
+- [`UiManifest`](skin.rs#L51) — El manifest exportado: versión, escala, carpeta de iconos, colores y piezas.
+- [`Palette`](skin.rs#L61) — Los colores del kit que el HUD pinta a mano (tinta, crema, marrón, rojo, verde).
+- [`UiManifest::palette`](skin.rs#L71) — La paleta, o `None` si falta un token.
   - Firma: `pub(crate) fn palette(&self) -> Option<Palette> {`
-- [`hex_rgb`](skin.rs#L85) — `#rrggbb` (con o sin almohadilla) como RGB.
+- [`hex_rgb`](skin.rs#L84) — `#rrggbb` (con o sin almohadilla) como RGB.
   - Firma: `pub(crate) fn hex_rgb(value: &str) -> Option<[u8; 3]> {`
-- [`parse_manifest`](skin.rs#L95) — Lee y comprueba el manifest: versión 1, escala positiva, todas las piezas y colores.
+- [`parse_manifest`](skin.rs#L94) — Lee y comprueba el manifest: versión 1, escala positiva, todas las piezas y colores.
   - Firma: `pub(crate) fn parse_manifest(text: &str) -> Result<UiManifest, String> {`
-- [`ClaySkin`](skin.rs#L120) — El kit cargado: manifest, paleta, textura por pieza y por ítem, y la fuente.
-- [`ClaySkin::load`](skin.rs#L131) — Carga el kit por la ruta de contenido del cliente, con un icono por cada id de ítem; `None` con un aviso si falta algo.
+- [`ClaySkin`](skin.rs#L119) — El kit cargado: manifest, paleta, textura por pieza y por ítem, y la fuente.
+- [`ClaySkin::load`](skin.rs#L130) — Carga el kit por la ruta de contenido del cliente, con un icono por cada id de ítem; `None` con un aviso si falta algo.
 
 ### `slice.rs`
 
@@ -70,21 +70,23 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 
 ### `hud.rs`
 
-- [`ClayHud`](hud.rs#L43) — El estado de las animaciones: globo de aviso, vuelos, rebotes por slot, cuentas en el aire, reloj y si el botón está pulsado.
-- [`ClayHud::apply`](hud.rs#L59) — Toma el fotograma y las ganancias: cada ganancia lanza un vuelo al slot que tiene el ítem (o al primero vacío); una nota nueva de inventario lleno abre el globo de aviso.
+- [`ClayHud`](hud.rs#L53) — El estado de las animaciones, del botón de acción y del inventario táctil.
+- [`ClayHud::update_inventory`](hud.rs#L69) — Alterna el inventario con un toque nuevo sobre la mochila y devuelve el sonido de apertura o cierre.
+  - Firma: `pub(crate) fn update_inventory(&mut self, layout: &HudLayout, touches: &[Touch]) -> Option<SoundEvent>`
+- [`ClayHud::apply`](hud.rs#L93) — Toma el fotograma y las ganancias: cada ganancia lanza un vuelo al slot que tiene el ítem (o al primero vacío); una nota nueva de inventario lleno abre el globo de aviso.
   - Firma: `pub(crate) fn apply(&mut self, frame: &UiFrame, gains: &[UiGain], size: (f32, f32)) {`
-- [`ClayHud::advance`](hud.rs#L86) — Envejece todo; un vuelo que aterriza entrega su cuenta y hace rebotar el slot.
+- [`ClayHud::advance`](hud.rs#L124) — Envejece todo; un vuelo que aterriza entrega su cuenta y hace rebotar el slot.
   - Firma: `pub(crate) fn advance(&mut self, elapsed_ms: f64) {`
-- [`ClayHud::shown_count`](hud.rs#L123) — Lo que muestra un slot: su cuenta menos lo que aún vuela hacia él.
+- [`ClayHud::shown_count`](hud.rs#L157) — Lo que muestra un slot: su cuenta menos lo que aún vuela hacia él.
   - Firma: `pub(crate) fn shown_count(&self, item: &str, count: u32) -> u32 {`
-- [`ClayHud::bump_age`](hud.rs#L128) — Cuánto lleva rebotando un slot, si rebota.
+- [`ClayHud::bump_age`](hud.rs#L162) — Cuánto lleva rebotando un slot, si rebota.
   - Firma: `pub(crate) fn bump_age(&self, slot: usize) -> Option<f64> {`
-- [`Flight`](hud.rs#L35) — Un vuelo en curso: item, cantidad, de dónde sale, a qué slot va (o, con los controles táctiles, a la mochila) y a cuánto tiempo.
-- [`BubbleContent`](hud.rs#L13), [`Bubble`](hud.rs#L24) — Qué dice el globo de aviso.
+- [`Flight`](hud.rs#L29) — Un vuelo en curso: item, cantidad, de dónde sale, a qué slot va (o, con los controles táctiles, a la mochila) y a cuánto tiempo.
+- [`BubbleContent`](hud.rs#L16), [`Bubble`](hud.rs#L22) — Qué dice el globo de aviso.
 
 ### `draw.rs`
 
-- [`draw_clay_stick`](draw.rs#L380) — Pinta el joystick táctil flotante con el kit: la base y el mando (rojo en carrera) y, si hay algo al alcance, su herramienta sobre el mando, que se balancea mientras el joystick quieto recolecta. Invisible mientras el stick descansa idle. No-op si no hay dedo.
+- [`draw_clay_stick`](draw.rs#L384) — Pinta el joystick táctil flotante con el kit: la base y el mando (rojo en carrera) y, si hay algo al alcance, su herramienta sobre el mando, que se balancea mientras el joystick quieto recolecta. Invisible mientras el stick descansa idle. No-op si no hay dedo.
   - Firma: `pub(crate) fn draw_clay_stick( skin: &ClaySkin, view: &StickView, tool: Option<&str>, clock_ms: f64, ) {`
-- [`draw_clay_hud`](draw.rs#L435) — Pinta la barra de progreso con el material que va a soltar arriba del jugador, el panel y los slots, el botón de acción, el globo de aviso y los números voladores. La pieza `progress` es el fondo oscuro de la barra y `progress_fill` se estira dentro de su contorno según el avance.
+- [`draw_clay_hud`](draw.rs#L439) — Pinta la barra de progreso con el material que va a soltar arriba del jugador, el panel y los slots, el botón de acción, el globo de aviso y los números voladores. Dibuja la mochila cerrada o abierta según el estado del inventario táctil. La pieza `progress` es el fondo oscuro de la barra y `progress_fill` se estira dentro de su contorno según el avance.
   - Firma: `pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, layout: &HudLayout) {`

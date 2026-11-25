@@ -107,9 +107,12 @@ npm run render
 ```
 
 Un sonido por evento: los de un solo disparo suenan al saltar (más alto en el aire),
-aterrizar (más alto cuanto más fuerte el impacto), patinar y trepar; y los bucles de andar,
+aterrizar (más alto cuanto más fuerte el impacto), patinar, trepar y abrir o cerrar el inventario
+táctil. Los bucles de andar,
 correr y volar con el jetpack siguen al estado de movimiento. En web, el audio arranca con el
-primer gesto del usuario (política de autoplay del navegador), como en la versión anterior.
+primer gesto del usuario. En pantallas táctiles, el puente activa el audio al soltar el dedo
+(`touchend`) y reproduce los sonidos pendientes, incluido el de apertura si el primer toque fue
+sobre la mochila.
 
 ## Empaquetar para macOS
 
