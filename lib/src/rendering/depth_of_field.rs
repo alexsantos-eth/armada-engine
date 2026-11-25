@@ -1,4 +1,4 @@
-//! Depth of field by isometric depth: a half-resolution depth pass the presentation reads.
+//! Depth of field by isometric depth: a scene-resolution depth pass the presentation reads.
 //!
 //! The pass redraws the sorted scene with [`DepthMaterial`] into [`DepthTarget`]; every draw
 //! carries a [`DepthStamp`] that says at which depth its pixels sit, so the blur of the grade
@@ -13,6 +13,7 @@ use macroquad::prelude::*;
 use miniquad::{BlendFactor, BlendState, Equation, PipelineParams};
 
 use crate::assets::sprites::Focus;
+use crate::rendering::render_target::render_target_size;
 
 /// The lowest depth the map can hold, as a share of the screen's height from its top.
 pub const DEPTH_MIN: f32 = -1.0;
@@ -91,18 +92,20 @@ impl DepthFrame {
     pub fn stamp(&self, key: DrawKey, focus: Focus) -> DepthStamp {
         let at = |pixels: f64| ((self.ground_origin + pixels) / f64::from(self.height)) as f32;
         match focus {
-            Focus::Standing => {
+            Focus::Standing | Focus::Player => {
                 let depth = at(key.depth);
                 DepthStamp {
                     least: depth,
                     most: depth,
                     lift: 0.0,
+                    sharp: focus == Focus::Player,
                 }
             }
             Focus::Surface { top } => DepthStamp {
                 least: at(key.depth),
                 most: at(key.depth + self.tile_height),
                 lift: ((top - self.level) * self.elevation_step) as f32,
+                sharp: false,
             },
         }
     }
@@ -115,27 +118,18 @@ pub struct DepthStamp {
     pub least: f32,
     pub most: f32,
     pub lift: f32,
+    sharp: bool,
 }
 
 impl DepthStamp {
-    /// Lays the stamp over `vertex`: the two bounds in its colour, the lift in `normal.x`.
+    /// Lays the stamp over `vertex`: the two bounds in its colour, the lift in `normal.x`,
+    /// and the sharp flag in `normal.y`.
     pub fn over(&self, vertex: &mut Vertex) {
         let [a, b] = encode_depth(self.least);
         let [c, d] = encode_depth(self.most);
         vertex.color = [a, b, c, d];
-        vertex.normal = vec4(self.lift, 0.0, 0.0, 0.0);
+        vertex.normal = vec4(self.lift, f32::from(self.sharp), 0.0, 0.0);
     }
-}
-
-/// The size of the depth map for a framebuffer of `width` by `height`: half of it, rounded up.
-fn depth_target_size(width: f32, height: f32) -> (u32, u32) {
-    let half = |value: f32| {
-        if !value.is_finite() {
-            return 1;
-        }
-        (value.max(1.0) / 2.0).ceil().min(u32::MAX as f32) as u32
-    };
-    (half(width), half(height))
 }
 
 /// The GLSL the grade includes to read the depth map and turn it into a blur radius.
@@ -146,8 +140,7 @@ uniform float FocalHalfHeight;
 uniform float TransitionHeight;
 uniform float MaxBlurRadius;
 
-float sceneDepth(vec2 point) {
-    vec4 stored = texture2D(DepthMap, point);
+float sceneDepth(vec2 point, vec4 stored) {
     if (stored.b < 0.5) {
         return 1.0 - point.y;
     }
@@ -156,7 +149,11 @@ float sceneDepth(vec2 point) {
 }
 
 float blurRadius(vec2 point) {
-    float gap = abs(sceneDepth(point) - FocusDepth);
+    vec4 stored = texture2D(DepthMap, point);
+    if (stored.a > 0.5) {
+        return 0.0;
+    }
+    float gap = abs(sceneDepth(point, stored) - FocusDepth);
     return smoothstep(
         FocalHalfHeight,
         FocalHalfHeight + TransitionHeight,
@@ -171,10 +168,15 @@ attribute vec2 texcoord;
 attribute vec4 color0;
 attribute vec4 normal;
 
-varying vec2 uv;
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+varying highp vec2 uv;
+#else
+varying mediump vec2 uv;
+#endif
 varying vec4 bounds;
 varying float pixelY;
 varying float lift;
+varying lowp float sharp;
 
 uniform mat4 Model;
 uniform mat4 Projection;
@@ -185,6 +187,7 @@ void main() {
     bounds = color0 / 255.0;
     pixelY = position.y;
     lift = normal.x;
+    sharp = normal.y;
 }"#;
 
 /// The depth pass's fragment shader: alpha-tested artwork writing its depth in two bytes.
@@ -195,10 +198,15 @@ precision highp float;
 precision mediump float;
 #endif
 
-varying vec2 uv;
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+varying highp vec2 uv;
+#else
+varying mediump vec2 uv;
+#endif
 varying vec4 bounds;
 varying float pixelY;
 varying float lift;
+varying lowp float sharp;
 
 uniform sampler2D Texture;
 uniform float ScreenHeight;
@@ -209,13 +217,14 @@ float unpack(vec2 pair) {
 }
 
 void main() {
-    if (texture2D(Texture, uv).a < 0.5) {
+    float alpha = texture2D(Texture, uv).a;
+    if (alpha <= 0.0 || (sharp < 0.5 && alpha < 0.5)) {
         discard;
     }
     float depth = clamp((pixelY + lift) / ScreenHeight, unpack(bounds.rg), unpack(bounds.ba));
     float code = floor(clamp((depth - -1.0) / 3.0, 0.0, 1.0) * 65535.0 + 0.5);
     float high = floor(code / 256.0);
-    gl_FragColor = vec4(high / 255.0, (code - high * 256.0) / 255.0, 1.0, 1.0);
+    gl_FragColor = vec4(high / 255.0, (code - high * 256.0) / 255.0, 1.0, sharp);
 }"#;
 
 fn opaque_pipeline() -> PipelineParams {
@@ -264,7 +273,7 @@ impl DepthMaterial {
     }
 }
 
-/// The half-resolution map of depths the grade reads; cleared to "nothing drawn" each frame.
+/// The scene-resolution map of depths the grade reads; cleared to "nothing drawn" each frame.
 pub struct DepthTarget {
     target: RenderTarget,
     size: (u32, u32),
@@ -273,7 +282,7 @@ pub struct DepthTarget {
 impl DepthTarget {
     /// Allocates the map for a framebuffer of `width` by `height` pixels.
     pub fn new(width: f32, height: f32) -> Self {
-        let size = depth_target_size(width, height);
+        let size = render_target_size(width, height);
         Self {
             target: Self::allocate(size),
             size,
@@ -288,7 +297,7 @@ impl DepthTarget {
 
     /// Reallocates only after the framebuffer's size changed.
     pub fn resize(&mut self, width: f32, height: f32) {
-        let size = depth_target_size(width, height);
+        let size = render_target_size(width, height);
         if size != self.size {
             self.target = Self::allocate(size);
             self.size = size;

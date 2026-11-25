@@ -18,7 +18,11 @@ const VERTEX: &str = r#"#version 100
 attribute vec3 position;
 attribute vec2 texcoord;
 
-varying lowp vec2 uv;
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+varying highp vec2 uv;
+#else
+varying mediump vec2 uv;
+#endif
 
 uniform mat4 Model;
 uniform mat4 Projection;
@@ -35,7 +39,11 @@ precision highp float;
 precision mediump float;
 #endif
 
-varying lowp vec2 uv;
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+varying highp vec2 uv;
+#else
+varying mediump vec2 uv;
+#endif
 
 uniform sampler2D Texture;
 uniform vec4 Tint;

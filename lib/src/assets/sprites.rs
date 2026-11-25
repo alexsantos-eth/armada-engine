@@ -821,9 +821,11 @@ pub struct SpriteDraw {
 /// screen: everything standing on one cell is exactly as sharp as that cell's ground.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Focus {
-    /// Something upright on its cell (an entity, the player, a building's band): the whole
+    /// Something upright on its cell (an entity or a building's band): the whole
     /// artwork reads at its key's depth, so the crown of a tall tree is as sharp as its trunk.
     Standing,
+    /// A player sprite whose visible pixels always bypass the depth blur.
+    Player,
     /// A block of terrain whose column's top face is at `top`: each pixel of that face reads
     /// at the ground it shows, so a flat field blurs as a smooth gradient and not tile by tile;
     /// the sides below it read at the cell's near corner.
@@ -1091,6 +1093,16 @@ pub fn draw_depth(atlas: &mut SpriteAtlas, draws: &[SpriteDraw], frame: &DepthFr
     for draw in draws {
         atlas.stamp = Some(frame.stamp(draw.key, draw.focus));
         match &draw.kind {
+            DrawKind::Shaded {
+                texture,
+                frame,
+                band: None,
+                layout,
+                shade,
+                ..
+            } if draw.focus == Focus::Player => {
+                atlas.draw_shaded(*texture, *frame, *layout, (shade.as_ref(), WHITE), plain);
+            }
             DrawKind::Sprite {
                 texture,
                 frame,
@@ -1144,7 +1156,7 @@ fn draw_queue(atlas: &mut SpriteAtlas, draws: &mut [SpriteDraw], dithered: bool)
                 tint,
                 opacity,
             } => {
-                if *opacity < 1.0 {
+                if *opacity < 1.0 || draw.focus == Focus::Player {
                     atlas.draw_veiled(
                         *texture,
                         *frame,

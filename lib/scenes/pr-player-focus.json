@@ -1,0 +1,25 @@
+{
+  "world": "blank",
+  "window": [960, 600],
+  "zoom": 0.8,
+  "phase": "day",
+  "centre": [16, 16],
+  "player": [16, 16],
+  "edits": [
+    { "place": { "at": [20, 19], "blueprint": "runestone_tall" } },
+    { "place": { "at": [18, 14], "blueprint": "runestone_tall" } }
+  ],
+  "steps": [
+    "settle",
+    { "shot": "player-focus-idle.png" },
+    { "walk": { "dir": [1, 0], "frames": 12 } },
+    "settle",
+    { "shot": "player-focus-after-walk.png" },
+    "jetpack",
+    "jump",
+    { "wait": { "frames": 5 } },
+    { "shot": "player-focus-jetpack.png" }
+  ],
+  "out": "shots",
+  "maxFrames": 600
+}
