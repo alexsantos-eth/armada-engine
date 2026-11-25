@@ -72,6 +72,41 @@
       "pad": 24,
       "slice": 0
     },
+    "shop_row": {
+      "file": "ui/shop_row.png",
+      "width": 448,
+      "height": 164,
+      "pad": 24,
+      "slice": 44
+    },
+    "shop_row_selected": {
+      "file": "ui/shop_row_selected.png",
+      "width": 448,
+      "height": 164,
+      "pad": 24,
+      "slice": 44
+    },
+    "shop_row_disabled": {
+      "file": "ui/shop_row_disabled.png",
+      "width": 448,
+      "height": 164,
+      "pad": 24,
+      "slice": 44
+    },
+    "coin": {
+      "file": "ui/coin.png",
+      "width": 116,
+      "height": 116,
+      "pad": 24,
+      "slice": 0
+    },
+    "market_mark": {
+      "file": "ui/market_mark.png",
+      "width": 176,
+      "height": 176,
+      "pad": 24,
+      "slice": 0
+    },
     "bubble": {
       "file": "ui/bubble.png",
       "width": 528,

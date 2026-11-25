@@ -1,0 +1,95 @@
+{
+  "world": "procedural",
+  "window": [
+    1280,
+    800
+  ],
+  "zoom": 2.2,
+  "phase": "day",
+  "centre": [
+    -12,
+    142
+  ],
+  "player": [
+    -12,
+    142
+  ],
+  "carry": [
+    {
+      "item": "wood",
+      "amount": 14
+    },
+    {
+      "item": "stone",
+      "amount": 6
+    },
+    {
+      "item": "fiber",
+      "amount": 9
+    },
+    {
+      "item": "copper_ore",
+      "amount": 2
+    }
+  ],
+  "wallet": 60,
+  "edits": [
+    {
+      "surface": {
+        "at": [
+          -13,
+          141
+        ],
+        "material": "grass"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          -13,
+          141
+        ],
+        "blueprint": "market_stall"
+      }
+    }
+  ],
+  "steps": [
+    "settle",
+    {
+      "shot": "shop-0-mark.png"
+    },
+    {
+      "trade": "open"
+    },
+    {
+      "shot": "shop-1-sell.png"
+    },
+    {
+      "trade": "down"
+    },
+    {
+      "trade": "confirm"
+    },
+    {
+      "shot": "shop-2-sold.png"
+    },
+    {
+      "trade": "buy"
+    },
+    {
+      "shot": "shop-3-buy.png"
+    },
+    {
+      "trade": "confirm"
+    },
+    {
+      "shot": "shop-4-bought.png"
+    },
+    {
+      "trade": "close"
+    },
+    {
+      "shot": "shop-5-closed.png"
+    }
+  ]
+}

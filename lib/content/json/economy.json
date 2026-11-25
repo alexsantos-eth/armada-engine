@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "currency": "Monedas",
+  "merchants": ["market_stall"],
+  "planetSpread": 20,
+  "catalogSize": 3,
+  "prices": [
+    { "item": "fiber", "coins": 1 },
+    { "item": "wood", "coins": 2 },
+    { "item": "stone", "coins": 2 },
+    { "item": "mushroom", "coins": 3 },
+    { "item": "coconut", "coins": 3 },
+    { "item": "bone", "coins": 4 },
+    { "item": "copper_ore", "coins": 12 },
+    { "item": "amber", "coins": 20 }
+  ],
+  "goods": [
+    { "tool": "bone_axe", "coins": 30 },
+    { "tool": "vine_trap", "coins": 35 },
+    { "tool": "copper_pickaxe", "coins": 120 },
+    { "tool": "copper_hook", "coins": 140 }
+  ]
+}

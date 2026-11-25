@@ -152,6 +152,7 @@ pub(crate) async fn run(mut game: Game) {
                 game.audio.play(sound);
             }
             crate::ui::draw_clay_hud(skin, &game.clay_hud, &frame, &layout);
+            game.draw_economy(skin);
             stick_tool = frame.action.as_ref().map(|action| action.tool.clone());
         } else if game.streams {
             let prompt = crate::harvest::hotbar::prompt(&game.harvest_status);

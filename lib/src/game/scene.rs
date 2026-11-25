@@ -39,6 +39,9 @@ use crate::player::shadow_clip;
 use crate::terrain::terrain_view_blocks::{Surroundings, TERRAIN_LAYER, collect_terrain_sprites};
 use crate::water::reflection_view::{Reflected, ReflectionSprite, collect_reflection};
 
+/// Tile heights above a market's ground point at which its icon floats.
+const MARK_HEIGHT: f64 = 1.05;
+
 /// This view's projection with its origin at `(origin_x, origin_y)`: the tile metrics are the
 /// scene's, the origin follows the camera.
 pub(crate) fn preview_projection(
@@ -452,6 +455,7 @@ impl Game {
         );
         self.fire_spots.clear();
         self.effect_spots.clear();
+        self.market_marks.clear();
         let chunks_drawn = self.collect_world(view, player, &water);
         let moved = self.collect_player(view, &water);
         self.collect_npcs(view, &water);
@@ -665,6 +669,19 @@ impl Game {
                 };
                 if !SpriteAtlas::on_screen(layout) {
                     continue;
+                }
+                if self.economy.is_merchant(entity.type_()) {
+                    self.market_marks.push(crate::shop::MarketMark {
+                        at: (
+                            ground.screen_x as f32,
+                            (ground.screen_y - projection.tile_height * MARK_HEIGHT) as f32,
+                        ),
+                        side: crate::shop::mark_side(projection.tile_width as f32),
+                        near: self
+                            .merchant
+                            .as_ref()
+                            .is_some_and(|merchant| merchant.id == entity.id()),
+                    });
                 }
                 if entity.fire() {
                     self.fire_spots.push(FireSpot {

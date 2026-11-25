@@ -43,3 +43,16 @@ pub(crate) struct UiGain {
     pub(crate) x: f32,
     pub(crate) y: f32,
 }
+
+/// What the open shop shows this frame.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct ShopFrame {
+    /// What the money is called, plural.
+    pub(crate) currency: String,
+    pub(crate) coins: u64,
+    pub(crate) tab: crate::shop::Tab,
+    pub(crate) cursor: usize,
+    pub(crate) rows: Vec<crate::shop::ShopRow>,
+    /// What the last trade said.
+    pub(crate) message: Option<String>,
+}

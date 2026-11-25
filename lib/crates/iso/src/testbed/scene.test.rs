@@ -226,3 +226,20 @@ fn a_scene_reads_its_window_zoom_centre_and_output() {
     assert_eq!(scene.out, "capturas");
     assert_eq!(scene.max_frames, 120);
 }
+
+#[test]
+fn a_scene_can_carry_items_hold_coins_and_visit_the_shop() {
+    let scene = parse_scene(
+        r#"{
+            "carry": [{ "item": "wood", "amount": 9 }],
+            "wallet": 40,
+            "steps": [{ "trade": "open" }, { "trade": "confirm" }, { "shot": "a.png" }]
+        }"#,
+    )
+    .unwrap();
+    assert_eq!(scene.wallet, 40);
+    assert_eq!(scene.carry[0].item, "wood");
+    assert_eq!(scene.steps[0], SceneStep::Trade(SceneTrade::Open));
+    assert!(!SceneStep::Trade(SceneTrade::Close).ends_the_frame());
+    assert!(parse_scene(r#"{ "steps": [{ "trade": "haggle" }] }"#).is_err());
+}

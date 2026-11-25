@@ -22,6 +22,7 @@ mod player;
 mod rendering;
 mod save;
 mod services;
+mod shop;
 mod terrain;
 mod testbed;
 mod touch;

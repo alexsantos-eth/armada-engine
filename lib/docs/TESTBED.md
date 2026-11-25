@@ -53,6 +53,8 @@ la terminal cada captura que escribe y una línea de resumen al acabar.
 | `zoom` | Menos de 1 aleja la cámara y cabe más mundo; más de 1 la acerca. |
 | `phase` | Fija la luz a `dawn`, `day`, `sunset` o `night` durante toda la corrida. |
 | `player` | La celda en la que aparece el jugador, con la cámara ya encuadrada. |
+| `carry` | Items con que empieza el jugador, `[{ "item": "wood", "amount": 14 }]`; para encuadrar una tienda con algo que vender. |
+| `wallet` | Las monedas con que empieza el jugador. |
 | `edits` | Lo que se construye antes del primer paso (ver abajo). |
 | `steps` | Los pasos de la corrida. Sin pasos: esperar la luz y tomar `scene.png`. |
 | `out` | Carpeta de salida, relativa al propio archivo de escena. Por defecto `shots`. |
@@ -91,6 +93,8 @@ la escena lo dice.
 { "teleport": [x, y] }                         // mueve al jugador, con la cámara ya puesta
 { "phase": "night" }                           // cambia la fase de la luz
 { "edit": { "raise": { "at": [4, 4] } } }      // una edición a mitad de corrida
+{ "trade": "open" }                            // la tienda del comerciante al alcance: "open", "sell",
+                                               // "buy", "up", "down", "confirm" o "close"
 { "shot": "nombre.png" }                       // escribe el fotograma
 ```
 

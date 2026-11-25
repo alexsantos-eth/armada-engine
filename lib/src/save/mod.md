@@ -15,7 +15,7 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
 
 #### Funciones y métodos
 
-- [`snapshot_of`](persistence.rs#L98) — La partida que se escribe para un archivo de chunks en un mundo de `seed`: sus chunks, la semilla en `systems.world` (para que un mundo nacido de `?fresh` se reabra igual) y, si se dan (`SavedSystems`), lo que lleva el jugador en `systems.inventory` (`iso::inventory::with_carried`) y los montones del suelo en `systems.drops` (`iso::drops::with_drops`).
+- [`snapshot_of`](persistence.rs#L98) — La partida que se escribe para un archivo de chunks en un mundo de `seed`: sus chunks, la semilla en `systems.world` (para que un mundo nacido de `?fresh` se reabra igual) y, si se dan (`SavedSystems`), lo que lleva el jugador en `systems.inventory` (`iso::inventory::with_carried`) la cartera en `systems.economy` (`iso::economy::with_wallet`) y los montones del suelo en `systems.drops` (`iso::drops::with_drops`).
   - Firma: `pub fn snapshot_of( archive: &ChunkArchive, seed: u64, parts: Option<SavedSystems<'_>>, ) -> WorldSave {`
 - [`boot_seed`](persistence.rs#L116) — La semilla con la que arranca el mundo: la de la escena, si no la recién tirada por `?fresh`/`--fresh`, si no la que guardó la partida, si no la por defecto.
   - Firma: `pub fn boot_seed( scene: Option<u64>, fresh: Option<u64>, saved: Option<u64>, default: u64, ) -> u64 {`
