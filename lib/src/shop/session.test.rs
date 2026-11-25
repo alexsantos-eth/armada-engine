@@ -43,13 +43,3 @@ fn close_asks_to_close() {
         ShopEvent::Close
     );
 }
-
-#[test]
-fn a_message_fades_after_its_time() {
-    let mut shop = Shop::open(Tab::Sell);
-    shop.say("hola".to_owned());
-    shop.advance(MESSAGE_MS - 1.0);
-    assert!(shop.message.is_some());
-    shop.advance(2.0);
-    assert!(shop.message.is_none());
-}

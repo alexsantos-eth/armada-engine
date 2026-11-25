@@ -108,7 +108,17 @@ pub(crate) fn rows(tab: Tab, stock: &ShopStock<'_>) -> Vec<ShopRow> {
     }
 }
 
-/// Carries out what `row` stands for and says what happened, in the words the shop shows.
+/// What a trade came to: the words for it and the money that moved.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Traded {
+    /// «Vendiste Madera», «Compraste Pico de cobre».
+    pub(crate) text: String,
+    pub(crate) coins: u64,
+    /// Whether the player got the coins (a sale) or paid them (a purchase).
+    pub(crate) earned: bool,
+}
+
+/// Carries out what `row` stands for and says what happened.
 pub(crate) fn trade(
     row: &ShopRow,
     carried: &mut Carried,
@@ -116,17 +126,24 @@ pub(crate) fn trade(
     market: &Market,
     economy: &EconomyCatalog,
     items: &ItemCatalog,
-) -> Result<String, &'static str> {
-    let money = economy.currency();
+) -> Result<Traded, &'static str> {
     match &row.action {
         RowAction::Sell { item } => {
             let count = carried.inventory.count(item);
             sell_item(&mut carried.inventory, wallet, market, economy, item, count)
-                .map(|coins| format!("Vendiste {} por {coins} {money}", row.name))
+                .map(|coins| Traded {
+                    text: format!("Vendiste {}", row.name),
+                    coins,
+                    earned: true,
+                })
                 .map_err(refusal)
         }
         RowAction::Buy { tool } => buy_tool(&mut carried.toolbelt, wallet, market, items, tool)
-            .map(|coins| format!("Compraste {} por {coins} {money}", row.name))
+            .map(|coins| Traded {
+                text: format!("Compraste {}", row.name),
+                coins: u64::from(coins),
+                earned: false,
+            })
             .map_err(refusal),
     }
 }

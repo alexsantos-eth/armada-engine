@@ -234,6 +234,9 @@ button.ac-slot:hover { transform: translateY(-3px) rotate(-1.5deg); }
 }
 .ac-row.is-selected { --ac-fill: var(--ac-gold); }
 .ac-row.is-disabled { --ac-fill: var(--ac-paper-shade); }
+/* a toast is a row that tells something: cream, or red when it warns */
+.ac-row.is-toast { --ac-fill: var(--ac-cream); }
+.ac-row.is-toast.is-warning { --ac-fill: var(--ac-red); }
 .ac-row.is-disabled::before { box-shadow: 2px 3px 0 var(--ac-ink); opacity: 0.8; }
 .ac-coin {
   --ac-fill: var(--ac-gold);

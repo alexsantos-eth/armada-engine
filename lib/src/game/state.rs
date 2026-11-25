@@ -158,6 +158,8 @@ pub(crate) struct Game {
     pub(crate) shop: Option<crate::shop::Shop>,
     /// Pixels of blur behind an open menu this frame (see `rendering::backdrop`).
     pub(crate) menu_blur: f32,
+    /// The toasts on screen.
+    pub(crate) toasts: crate::ui::Toasts,
     /// Whether the gather action was held last frame, to tell a new press from a held one.
     pub(crate) gather_was_held: bool,
     /// The merchant in reach this frame, if any.
@@ -570,6 +572,7 @@ impl Game {
             wallet,
             shop: None,
             menu_blur: 0.0,
+            toasts: crate::ui::Toasts::default(),
             gather_was_held: false,
             merchant: None,
             market_marks: Vec::new(),

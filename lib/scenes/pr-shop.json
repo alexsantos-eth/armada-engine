@@ -71,6 +71,11 @@
       "trade": "confirm"
     },
     {
+      "wait": {
+        "frames": 20
+      }
+    },
+    {
       "shot": "shop-2-sold.png"
     },
     {
@@ -83,10 +88,20 @@
       "trade": "confirm"
     },
     {
+      "wait": {
+        "frames": 20
+      }
+    },
+    {
       "shot": "shop-4-bought.png"
     },
     {
       "trade": "close"
+    },
+    {
+      "wait": {
+        "frames": 20
+      }
     },
     {
       "shot": "shop-5-closed.png"

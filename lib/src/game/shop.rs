@@ -16,7 +16,7 @@ use macroquad::prelude::*;
 
 use crate::game::Game;
 use crate::shop::{Hit, RowAction, Shop, ShopEvent, ShopKey, ShopLayout, ShopRow, ShopStock, Tab};
-use crate::ui::{ClaySkin, ShopFrame};
+use crate::ui::{ClaySkin, ShopFrame, Toast, ToastIcon};
 
 /// What the shop is asked to do in a frame, whoever asked.
 enum Command {
@@ -123,7 +123,7 @@ impl Game {
     /// The shop's share of a frame, before the player's input is used: restocks the shelf on a
     /// new day, looks for a merchant, takes the commands of this frame and, while the shop is
     /// up, keeps the player still.
-    pub(crate) fn update_shop(&mut self, input: &mut NormalizedInput, frame_ms: f64) {
+    pub(crate) fn update_shop(&mut self, input: &mut NormalizedInput) {
         if !self.streams {
             self.shop = None;
             self.merchant = None;
@@ -158,8 +158,7 @@ impl Game {
         if self.merchant.is_none() {
             self.close_shop();
         }
-        if let Some(shop) = self.shop.as_mut() {
-            shop.advance(frame_ms);
+        if self.shop.is_some() {
             *input = NormalizedInput {
                 gather_held: false,
                 ..NormalizedInput::default()
@@ -228,7 +227,14 @@ impl Game {
         let Some(row) = rows.get(index) else {
             return;
         };
-        let said = if row.enabled {
+        let icon = if row.is_tool {
+            ToastIcon::Piece(row.icon.clone())
+        } else {
+            ToastIcon::Item(row.icon.clone())
+        };
+        // What came of it goes up as a toast; a greyed-out row says nothing unless it has
+        // something to say ("Ya la tienes"), and one that only costs too much stays quiet.
+        let toast = if row.enabled {
             let result = crate::shop::trade(
                 row,
                 &mut self.carried,
@@ -242,13 +248,15 @@ impl Game {
                 self.haptic.pulse();
                 self.unsaved_changes = true;
             }
-            result.unwrap_or_else(str::to_owned)
+            Some(match result {
+                Ok(done) => Toast::new(icon, done.text).with_coins(done.coins, done.earned),
+                Err(refusal) => Toast::new(icon, refusal).warning(),
+            })
         } else {
-            // A greyed-out row only says why when it has something to say ("Ya la tienes").
-            row.note.map(str::to_owned).unwrap_or_default()
+            row.note.map(|note| Toast::new(icon, note).warning())
         };
-        if let Some(shop) = self.shop.as_mut().filter(|_| !said.is_empty()) {
-            shop.say(said);
+        if let Some(toast) = toast {
+            self.toasts.push(toast);
         }
         if matches!(row.action, RowAction::Sell { .. }) {
             let len = self.shop_rows().len();
@@ -267,11 +275,11 @@ impl Game {
             tab: shop.tab,
             cursor: shop.cursor,
             rows: self.shop_rows(),
-            message: shop.message.as_ref().map(|(text, _)| text.clone()),
         })
     }
 
     /// Paints the economy over the HUD: the icon over each market, the wallet and the shop.
+    /// The toasts go last, over everything.
     pub(crate) fn draw_economy(&self, skin: &ClaySkin) {
         let open = self.shop_frame();
         if open.is_none() {
@@ -289,5 +297,6 @@ impl Game {
             );
             crate::ui::draw_shop(skin, &frame, &layout);
         }
+        crate::ui::draw_toasts(skin, &self.toasts);
     }
 }

@@ -10,6 +10,8 @@ mod motion;
 mod shop;
 mod skin;
 mod slice;
+mod toast;
+mod toast_draw;
 
 pub(crate) use draw::{draw_clay_hud, draw_clay_stick};
 pub(crate) use frame::{ShopFrame, UiAction, UiFrame, UiGain, UiStack};
@@ -17,3 +19,5 @@ pub(crate) use hud::ClayHud;
 pub(crate) use layout::HudLayout;
 pub(crate) use shop::{draw_market_marks, draw_shop, draw_wallet};
 pub(crate) use skin::ClaySkin;
+pub(crate) use toast::{Toast, ToastIcon, Toasts};
+pub(crate) use toast_draw::draw_toasts;
