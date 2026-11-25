@@ -5,10 +5,10 @@ use crate::harvest::HarvestTarget;
 use crate::inventory::Carried;
 use crate::items::{HarvestYield, ItemCatalog, ToolKind, tool_speed_tenths};
 
-/// Fixed ticks of one blow of the gathering swing: wind up, strike, follow through.
-pub const HARVEST_STRIKE_TICKS: u32 = 10;
+/// Fixed ticks of one feedback cycle: wind up, strike, follow through.
+pub const HARVEST_STRIKE_TICKS: u32 = 5;
 /// Tick of the swing on which the blow lands; the gather sheet's strike pose matches it.
-pub const HARVEST_STRIKE_AT: u32 = 6;
+pub const HARVEST_STRIKE_AT: u32 = 3;
 
 /// Why a target in reach cannot be gathered now.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
