@@ -22,19 +22,19 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 ### `skin.rs`
 
 - [`REQUIRED_PIECES`](skin.rs#L9) — Las piezas que el HUD dibuja; el manifest debe traerlas todas.
-- [`MANIFEST_PATH`](skin.rs#L39) — `content/ui/ui.json`.
-- [`DISPLAY_FONT`](skin.rs#L206) — `content/fonts/Fredoka-Bold.ttf`, la fuente display del kit.
-- [`Piece`](skin.rs#L44) — Una pieza exportada: PNG, tamaño en píxeles de imagen, margen alrededor de la forma y borde de nine-slice.
-- [`UiManifest`](skin.rs#L55) — El manifest exportado: versión, escala, carpeta de iconos, colores y piezas.
-- [`Palette`](skin.rs#L65) — Los colores del kit que el HUD pinta a mano (tinta, crema, marrón, rojo, verde).
-- [`UiManifest::palette`](skin.rs#L75) — La paleta, o `None` si falta un token.
+- [`MANIFEST_PATH`](skin.rs#L40) — `content/ui/ui.json`.
+- [`DISPLAY_FONT`](skin.rs#L207) — `content/fonts/Fredoka-Bold.ttf`, la fuente display del kit.
+- [`Piece`](skin.rs#L45) — Una pieza exportada: PNG, tamaño en píxeles de imagen, margen alrededor de la forma y borde de nine-slice.
+- [`UiManifest`](skin.rs#L56) — El manifest exportado: versión, escala, carpeta de iconos, colores y piezas.
+- [`Palette`](skin.rs#L66) — Los colores del kit que el HUD pinta a mano (tinta, crema, marrón, rojo, verde).
+- [`UiManifest::palette`](skin.rs#L76) — La paleta, o `None` si falta un token.
   - Firma: `pub(crate) fn palette(&self) -> Option<Palette> {`
-- [`hex_rgb`](skin.rs#L88) — `#rrggbb` (con o sin almohadilla) como RGB.
+- [`hex_rgb`](skin.rs#L89) — `#rrggbb` (con o sin almohadilla) como RGB.
   - Firma: `pub(crate) fn hex_rgb(value: &str) -> Option<[u8; 3]> {`
-- [`parse_manifest`](skin.rs#L98) — Lee y comprueba el manifest: versión 1, escala positiva, todas las piezas y colores.
+- [`parse_manifest`](skin.rs#L99) — Lee y comprueba el manifest: versión 1, escala positiva, todas las piezas y colores.
   - Firma: `pub(crate) fn parse_manifest(text: &str) -> Result<UiManifest, String> {`
-- [`ClaySkin`](skin.rs#L123) — El kit cargado: manifest, paleta, textura por pieza y por ítem, y la fuente.
-- [`ClaySkin::load`](skin.rs#L134) — Carga el kit por la ruta de contenido del cliente, con un icono por cada id de ítem; `None` con un aviso si falta algo.
+- [`ClaySkin`](skin.rs#L124) — El kit cargado: manifest, paleta, textura por pieza y por ítem, y la fuente.
+- [`ClaySkin::load`](skin.rs#L135) — Carga el kit por la ruta de contenido del cliente, con un icono por cada id de ítem; `None` con un aviso si falta algo.
 
 ### `slice.rs`
 
@@ -90,11 +90,11 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 
 ### `shop.rs`
 
-Pinta la tienda con el kit y no tiene test (excepción de GPU de `FILE_STRUCTURE.md`; se comprueba con `scenes/pr-shop.json`): el panel es la pieza `hotbar`, las filas y las pestañas son `shop_row`, `shop_row_selected` y `shop_row_disabled`, los precios llevan la pieza `coin`, el cierre es `badge` y los mensajes y el globo que ofrece la tienda son `bubble`. Dónde va cada cosa lo decide `crate::shop::ShopLayout`.
+Pinta la tienda con el kit y no tiene test (excepción de GPU de `FILE_STRUCTURE.md`; se comprueba con `scenes/pr-shop.json`): el panel es la pieza `hotbar`, las filas y las pestañas son `shop_row`, `shop_row_selected` y `shop_row_disabled`, los precios llevan la pieza `coin`, el cierre es `badge` y los mensajes son `bubble` y el icono flotante de cada mercado es `market_mark`. Dónde va cada cosa lo decide `crate::shop::ShopLayout`.
 
-- [`draw_shop`](shop.rs#L124) — Pinta el fondo oscurecido, el panel con sus pestañas, las filas visibles, la cartera y el mensaje del último trato.
-- [`draw_shop_prompt`](shop.rs#L204), [`shop_prompt_rect`](shop.rs#L195) — El globo «Comerciar» cuando hay un comerciante al alcance y el rectángulo que el toque usa para abrir.
-- [`draw_wallet`](shop.rs#L212) — La cartera en la esquina: moneda y cuenta.
+- [`draw_shop`](shop.rs#L123) — Pinta el fondo oscurecido, el panel con sus pestañas, las filas visibles, la cartera y el mensaje del último trato.
+- [`draw_market_marks`](shop.rs#L191) — El icono que flota sobre cada mercado en pantalla, con su vaivén.
+- [`draw_wallet`](shop.rs#L204) — La cartera en la esquina: moneda y cuenta.
 
 ### `draw.rs`
 

@@ -59,6 +59,7 @@ Toda superficie con contorno es `.ac-hand` más un relleno: `.ac-paper`, `.ac-cr
 | Slot | `.ac-slot`, `__icon`, `__count`, `__key`; estados `.is-selected` / `[aria-pressed=true]`, `.is-empty`, `.is-bump` | lo crea `Hotbar` |
 | Fila de tienda | `.ac-row`; estados `.is-selected`, `.is-disabled` | — |
 | Moneda | `.ac-coin`; tamaño `--ac-coin` | — |
+| Marca de mercado | `.ac-mark` (lleva una `.ac-coin`); tamaño `--ac-mark` | — |
 | Globo de cómic | `.ac-bubble`, `__body`, `__tail`, `__amount`, `__icon`; `.is-warning`, `.is-in`, `.is-out` | `ArmadaUI.bubble(capa, { x, y, amount, item, name, text, warning, ms })` |
 | Botón de acción | `.ac-action`, `__icon`, `__label`, `__key`; `.is-pressed`, `.is-working` | `ArmadaUI.actionButton({ verb, tool, key })`, `ArmadaUI.setAction(btn, { verb, tool })`, `ArmadaUI.holdButton(btn, onChange, { refocus })` |
 | Progreso de cosecha | `.ac-progress`, `__fill`; `--ac-progress-share` de 0 a 1 | — |

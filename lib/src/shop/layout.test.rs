@@ -1,7 +1,6 @@
 //! Tests for where the shop sits on a screen.
 
 use super::*;
-use macroquad::math::vec2;
 
 #[test]
 fn the_panel_is_centred_and_inside_the_screen() {
@@ -63,12 +62,4 @@ fn a_point_is_over_what_it_is_over() {
         "no such row in a list of one"
     );
     assert_eq!(layout.hit(2.0, 2.0, 2), Hit::Outside);
-}
-
-#[test]
-fn the_prompt_sits_centred_above_the_bottom_row() {
-    let rect = prompt_rect(1000.0, 700.0, 200.0);
-    assert!((rect.x + rect.w / 2.0 - 500.0).abs() < 0.5);
-    assert!(rect.contains(vec2(500.0, rect.y + 5.0)));
-    assert!(rect.y + rect.h < 700.0 - 100.0);
 }

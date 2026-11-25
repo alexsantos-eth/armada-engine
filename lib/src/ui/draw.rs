@@ -46,7 +46,7 @@ fn faded(alpha: f32) -> Color {
 }
 
 /// Runs `paint` with everything posed around `pivot`.
-fn posed(
+pub(super) fn posed(
     pivot: (f32, f32),
     scale: (f32, f32),
     turn: f32,

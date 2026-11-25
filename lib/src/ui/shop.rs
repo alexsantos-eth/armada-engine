@@ -5,11 +5,10 @@
 
 use macroquad::prelude::*;
 
-use super::draw::{draw_icon, draw_label, draw_piece, rgb, text_width};
+use super::draw::{draw_icon, draw_label, draw_piece, posed, rgb, text_width};
 use super::frame::ShopFrame;
 use super::skin::ClaySkin;
-use crate::shop::layout::prompt_rect;
-use crate::shop::{ShopLayout, ShopRow, Tab};
+use crate::shop::{MarketMark, ShopLayout, ShopRow, Tab, mark_pose, mark_rect};
 
 /// Writes `text` centred on a rectangle.
 fn centred(skin: &ClaySkin, text: &str, rect: Rect, size: f32, fill: Color, ink: Color) {
@@ -188,24 +187,17 @@ pub(crate) fn draw_shop(skin: &ClaySkin, frame: &ShopFrame, layout: &ShopLayout)
     }
 }
 
-/// The size of the letters on the chip that offers the shop.
-const PROMPT_SIZE: f32 = 26.0;
-
-/// Where the chip that offers the shop sits, for the press that opens it.
-pub(crate) fn shop_prompt_rect(skin: &ClaySkin, text: &str) -> Rect {
-    prompt_rect(
-        screen_width(),
-        screen_height(),
-        text_width(skin, text, PROMPT_SIZE),
-    )
-}
-
-/// The chip that offers the shop while a merchant is in reach.
-pub(crate) fn draw_shop_prompt(skin: &ClaySkin, text: &str) {
-    let ink = rgb(skin.palette.ink, 1.0);
-    let rect = shop_prompt_rect(skin, text);
-    draw_piece(skin, "bubble", rect, 1.0);
-    centred(skin, text, rect, PROMPT_SIZE, ink, ink);
+/// The icon floating over each market in view, bobbing; the one in reach pulses.
+pub(crate) fn draw_market_marks(skin: &ClaySkin, marks: &[MarketMark], clock_ms: f64) {
+    for mark in marks {
+        let pose = mark_pose(clock_ms, mark.at.0 * 0.013, mark.near);
+        let mut shape = mark_rect(mark);
+        shape.y -= pose.lift;
+        let pivot = (shape.x + shape.w / 2.0, shape.y + shape.h / 2.0);
+        posed(pivot, (pose.scale, pose.scale), 0.0, (0.0, 0.0), || {
+            draw_piece(skin, "market_mark", shape, 1.0);
+        });
+    }
 }
 
 /// The wallet in the corner: coin and count.

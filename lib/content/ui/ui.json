@@ -100,6 +100,13 @@
       "pad": 24,
       "slice": 0
     },
+    "market_mark": {
+      "file": "ui/market_mark.png",
+      "width": 176,
+      "height": 176,
+      "pad": 24,
+      "slice": 0
+    },
     "bubble": {
       "file": "ui/bubble.png",
       "width": 528,

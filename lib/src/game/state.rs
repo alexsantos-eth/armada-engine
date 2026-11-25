@@ -158,6 +158,8 @@ pub(crate) struct Game {
     pub(crate) shop: Option<crate::shop::Shop>,
     /// The merchant in reach this frame, if any.
     pub(crate) merchant: Option<iso::economy::Merchant>,
+    /// The icons floating over the markets on screen, gathered while the entities are laid out.
+    pub(crate) market_marks: Vec<crate::shop::MarketMark>,
     /// What a scripted run asked of the shop since the last frame.
     pub(crate) scripted_trade: Vec<iso::testbed::SceneTrade>,
     /// The work on what is in reach; never saved, a reload starts the harvest over.
@@ -564,6 +566,7 @@ impl Game {
             wallet,
             shop: None,
             merchant: None,
+            market_marks: Vec::new(),
             scripted_trade: Vec::new(),
             items,
             carried,

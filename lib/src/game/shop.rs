@@ -15,7 +15,9 @@ use iso::time::clock_time;
 use macroquad::prelude::*;
 
 use crate::game::Game;
-use crate::shop::{Hit, RowAction, Shop, ShopEvent, ShopKey, ShopLayout, ShopRow, ShopStock, Tab};
+use crate::shop::{
+    Hit, RowAction, Shop, ShopEvent, ShopKey, ShopLayout, ShopRow, ShopStock, Tab, mark_rect,
+};
 use crate::ui::{ClaySkin, ShopFrame};
 
 /// What the shop is asked to do in a frame, whoever asked.
@@ -23,11 +25,6 @@ enum Command {
     Open,
     Key(ShopKey),
     Click(f32, f32),
-}
-
-/// The words on the chip that offers the shop.
-const fn prompt_text(touch: bool) -> &'static str {
-    if touch { "Comerciar" } else { "Comerciar [F]" }
 }
 
 /// The new presses of the pointer this frame: touches that began, or else a mouse click.
@@ -152,16 +149,14 @@ impl Game {
             .collect();
         if self.script.is_none() {
             commands.extend(keyboard(self.shop.is_some()));
-            let touch = self.touch.visible();
-            let prompt = self
-                .clay_skin
-                .as_ref()
-                .map(|skin| crate::ui::shop_prompt_rect(skin, prompt_text(touch)));
             for (x, y) in pointer_taps() {
                 if self.shop.is_some() {
                     commands.push(Command::Click(x, y));
                 } else if self.merchant.is_some()
-                    && prompt.is_some_and(|rect| rect.contains(vec2(x, y)))
+                    && self
+                        .market_marks
+                        .iter()
+                        .any(|mark| mark.near && mark_rect(mark).contains(vec2(x, y)))
                 {
                     commands.push(Command::Open);
                 }
@@ -285,9 +280,12 @@ impl Game {
         })
     }
 
-    /// Paints the economy over the HUD: the wallet, the chip that offers the shop and the shop.
+    /// Paints the economy over the HUD: the icon over each market, the wallet and the shop.
     pub(crate) fn draw_economy(&self, skin: &ClaySkin) {
         let open = self.shop_frame();
+        if open.is_none() {
+            crate::ui::draw_market_marks(skin, &self.market_marks, self.clay_hud.clock_ms);
+        }
         if self.wallet.coins() > 0 || open.is_some() {
             crate::ui::draw_wallet(skin, self.wallet.coins(), self.economy.currency());
         }
@@ -299,8 +297,6 @@ impl Game {
                 frame.cursor,
             );
             crate::ui::draw_shop(skin, &frame, &layout);
-        } else if self.merchant.is_some() {
-            crate::ui::draw_shop_prompt(skin, prompt_text(self.touch.visible()));
         }
     }
 }

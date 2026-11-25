@@ -41,6 +41,7 @@
 
   --ac-slot: 64px;
   --ac-coin: 34px;
+  --ac-mark: 64px;
   --ac-action: 104px;
   --ac-stick: 120px;
   --ac-stick-knob: 56px;
@@ -262,7 +263,30 @@ button.ac-slot:hover { transform: translateY(-3px) rotate(-1.5deg); }
   opacity: 0.45;
 }
 
-/* ---------- progress bar of a harvest under way ---------- */
+/* ---------- market mark: the icon floating over a market ---------- */
+
+.ac-mark {
+  --ac-fill: var(--ac-cream);
+  position: relative;
+  isolation: isolate;
+  width: var(--ac-mark);
+  height: var(--ac-mark);
+}
+.ac-mark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: var(--ac-line) solid var(--ac-ink);
+  border-radius: var(--ac-blob-round);
+  box-shadow: var(--ac-shadow-x) var(--ac-shadow-y) 0 var(--ac-ink);
+  background: var(--ac-noise), var(--ac-fill);
+  background-blend-mode: multiply;
+  filter: url(#ac-wobble);
+}
+.ac-mark .ac-coin { position: absolute; inset: 0; margin: auto; --ac-coin: calc(var(--ac-mark) * 0.6); }
+
+
 
 .ac-progress {
   position: relative;

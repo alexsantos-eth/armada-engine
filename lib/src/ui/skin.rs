@@ -15,6 +15,7 @@ pub(crate) const REQUIRED_PIECES: &[&str] = &[
     "shop_row_selected",
     "shop_row_disabled",
     "coin",
+    "market_mark",
     "bubble",
     "bubble_warning",
     "bubble_tail",

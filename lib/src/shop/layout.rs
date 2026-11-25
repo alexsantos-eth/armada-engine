@@ -25,9 +25,6 @@ const FOOTER: f32 = 44.0;
 const MAX_VISIBLE: usize = 6;
 /// Gap kept between the panel and the screen's edges.
 const SCREEN_MARGIN: f32 = 16.0;
-/// The prompt's height and the gap between it and the bottom of the screen.
-const PROMPT_HEIGHT: f32 = 56.0;
-const PROMPT_BOTTOM: f32 = 168.0;
 
 /// What a point on the screen is over.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -141,18 +138,6 @@ impl ShopLayout {
             .filter(|index| *index < count)
             .map_or(Hit::Panel, Hit::Row)
     }
-}
-
-/// The chip that offers the shop, centred above the bottom row of the HUD, `text_width` of
-/// text wide.
-pub(crate) fn prompt_rect(width: f32, height: f32, text_width: f32) -> Rect {
-    let w = text_width + 44.0;
-    Rect::new(
-        (width - w) / 2.0,
-        height - PROMPT_BOTTOM - PROMPT_HEIGHT,
-        w,
-        PROMPT_HEIGHT,
-    )
 }
 
 #[cfg(test)]
