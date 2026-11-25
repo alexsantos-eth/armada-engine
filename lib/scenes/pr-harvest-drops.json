@@ -13,7 +13,7 @@
   "steps": [
     "settle",
     {"shot": "harvest-ready.png"},
-    {"gather": {"frames": 55}},
+    {"gather": {"frames": 60}},
     {"teleport": [-10, 143]},
     {"wait": {"frames": 18}},
     "settle",
