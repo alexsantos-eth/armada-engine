@@ -36,6 +36,16 @@ pub(crate) fn begin(game: &mut Game, scene: &Scene, out: PathBuf) {
     if let Some(at) = scene.player {
         place_player(game, at);
     }
+    for carry in &scene.carry {
+        let left = game
+            .carried
+            .inventory
+            .add(&carry.item, carry.amount, &game.items);
+        if left > 0 {
+            run.note(format!("{} of {} did not fit", left, carry.item));
+        }
+    }
+    game.wallet = iso::economy::Wallet::with(scene.wallet);
     println!(
         "scene: {} edit(s), {} step(s), shots to write: {}",
         scene.edits.len(),
@@ -71,6 +81,7 @@ fn carry_out(game: &mut Game, run: &mut ScriptRun, frame: &ScriptFrame) {
     if let Some(at) = frame.teleport {
         place_player(game, at);
     }
+    game.scripted_trade.extend(frame.trade.iter().copied());
 }
 
 /// What stands on a cell, by the blueprint it was built from.

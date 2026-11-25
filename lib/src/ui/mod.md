@@ -22,19 +22,19 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 ### `skin.rs`
 
 - [`REQUIRED_PIECES`](skin.rs#L9) — Las piezas que el HUD dibuja; el manifest debe traerlas todas.
-- [`MANIFEST_PATH`](skin.rs#L35) — `content/ui/ui.json`.
-- [`DISPLAY_FONT`](skin.rs#L202) — `content/fonts/Fredoka-Bold.ttf`, la fuente display del kit.
-- [`Piece`](skin.rs#L40) — Una pieza exportada: PNG, tamaño en píxeles de imagen, margen alrededor de la forma y borde de nine-slice.
-- [`UiManifest`](skin.rs#L51) — El manifest exportado: versión, escala, carpeta de iconos, colores y piezas.
-- [`Palette`](skin.rs#L61) — Los colores del kit que el HUD pinta a mano (tinta, crema, marrón, rojo, verde).
-- [`UiManifest::palette`](skin.rs#L71) — La paleta, o `None` si falta un token.
+- [`MANIFEST_PATH`](skin.rs#L39) — `content/ui/ui.json`.
+- [`DISPLAY_FONT`](skin.rs#L206) — `content/fonts/Fredoka-Bold.ttf`, la fuente display del kit.
+- [`Piece`](skin.rs#L44) — Una pieza exportada: PNG, tamaño en píxeles de imagen, margen alrededor de la forma y borde de nine-slice.
+- [`UiManifest`](skin.rs#L55) — El manifest exportado: versión, escala, carpeta de iconos, colores y piezas.
+- [`Palette`](skin.rs#L65) — Los colores del kit que el HUD pinta a mano (tinta, crema, marrón, rojo, verde).
+- [`UiManifest::palette`](skin.rs#L75) — La paleta, o `None` si falta un token.
   - Firma: `pub(crate) fn palette(&self) -> Option<Palette> {`
-- [`hex_rgb`](skin.rs#L84) — `#rrggbb` (con o sin almohadilla) como RGB.
+- [`hex_rgb`](skin.rs#L88) — `#rrggbb` (con o sin almohadilla) como RGB.
   - Firma: `pub(crate) fn hex_rgb(value: &str) -> Option<[u8; 3]> {`
-- [`parse_manifest`](skin.rs#L94) — Lee y comprueba el manifest: versión 1, escala positiva, todas las piezas y colores.
+- [`parse_manifest`](skin.rs#L98) — Lee y comprueba el manifest: versión 1, escala positiva, todas las piezas y colores.
   - Firma: `pub(crate) fn parse_manifest(text: &str) -> Result<UiManifest, String> {`
-- [`ClaySkin`](skin.rs#L119) — El kit cargado: manifest, paleta, textura por pieza y por ítem, y la fuente.
-- [`ClaySkin::load`](skin.rs#L130) — Carga el kit por la ruta de contenido del cliente, con un icono por cada id de ítem; `None` con un aviso si falta algo.
+- [`ClaySkin`](skin.rs#L123) — El kit cargado: manifest, paleta, textura por pieza y por ítem, y la fuente.
+- [`ClaySkin::load`](skin.rs#L134) — Carga el kit por la ruta de contenido del cliente, con un icono por cada id de ítem; `None` con un aviso si falta algo.
 
 ### `slice.rs`
 
@@ -43,13 +43,13 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 
 ### `layout.rs`
 
-- [`HudLayout`](layout.rs#L30) — Los rectángulos del HUD para un tamaño de pantalla: lado de slot, slots, panel, ancla del aviso y botón de acción (solo en escritorio).
-- [`HudLayout::new`](layout.rs#L45) — Una fila centrada abajo en escritorio (slots de 30 a 54 px) con el botón de acción en la esquina; con controles táctiles, la barra arriba (una fila fina de 34 a 44 px si cabe, si no filas de seis) y sin botón de acción.
+- [`HudLayout`](layout.rs#L32) — Los rectángulos del HUD para un tamaño de pantalla: lado de slot, slots, panel, ancla del aviso y botón de acción (solo en escritorio).
+- [`HudLayout::new`](layout.rs#L48) — Una fila centrada abajo en escritorio (slots de 30 a 54 px) con el botón de acción en la esquina; con controles táctiles, la barra arriba (una fila fina de 34 a 44 px si cabe, si no filas de seis) y sin botón de acción.
   - Firma: `pub(crate) fn new(width: f32, height: f32, count: usize, touch: bool) -> Self {`
-- [`HudLayout::action_hit`](layout.rs#L113) — Si un punto cae en el botón de acción (redondo).
+- [`HudLayout::action_hit`](layout.rs#L123) — Si un punto cae en el botón de acción (redondo).
   - Firma: `pub(crate) fn action_hit(&self, x: f32, y: f32) -> bool {`
-- [`BOTTOM_MARGIN`](layout.rs#L9), [`TOP_MARGIN`](layout.rs#L11), [`ACTION_MARGIN`](layout.rs#L13), [`SLOT_GAP`](layout.rs#L15), [`SLOT_ASPECT`](layout.rs#L21) — Las medidas del HUD en escritorio.
-- [`TOUCH_ROW_SLOT`](layout.rs#L24) — El lado mínimo y máximo de un slot en la fila única táctil; por debajo, la barra pasa a filas de seis.
+- [`BOTTOM_MARGIN`](layout.rs#L9), [`TOP_MARGIN`](layout.rs#L11), [`ACTION_MARGIN`](layout.rs#L13), [`SLOT_GAP`](layout.rs#L15), [`SLOT_ASPECT`](layout.rs#L19) — Las medidas del HUD en escritorio.
+- [`TOUCH_ROW_SLOT`](layout.rs#L22) — El lado mínimo y máximo de un slot en la fila única táctil; por debajo, la barra pasa a filas de seis.
 
 ### `motion.rs`
 
@@ -83,6 +83,18 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
   - Firma: `pub(crate) fn bump_age(&self, slot: usize) -> Option<f64> {`
 - [`Flight`](hud.rs#L29) — Un vuelo en curso: item, cantidad, de dónde sale, a qué slot va (o, con los controles táctiles, a la mochila) y a cuánto tiempo.
 - [`BubbleContent`](hud.rs#L16), [`Bubble`](hud.rs#L22) — Qué dice el globo de aviso.
+
+### `frame.rs` (tienda)
+
+- [`ShopFrame`](frame.rs#L49) — Lo que muestra la tienda abierta: nombre de la moneda, monedas, pestaña, cursor, filas y mensaje. Lo arma `Game::shop_frame`.
+
+### `shop.rs`
+
+Pinta la tienda con el kit y no tiene test (excepción de GPU de `FILE_STRUCTURE.md`; se comprueba con `scenes/pr-shop.json`): el panel es la pieza `hotbar`, las filas y las pestañas son `shop_row`, `shop_row_selected` y `shop_row_disabled`, los precios llevan la pieza `coin`, el cierre es `badge` y los mensajes y el globo que ofrece la tienda son `bubble`. Dónde va cada cosa lo decide `crate::shop::ShopLayout`.
+
+- [`draw_shop`](shop.rs#L124) — Pinta el fondo oscurecido, el panel con sus pestañas, las filas visibles, la cartera y el mensaje del último trato.
+- [`draw_shop_prompt`](shop.rs#L204), [`shop_prompt_rect`](shop.rs#L195) — El globo «Comerciar» cuando hay un comerciante al alcance y el rectángulo que el toque usa para abrir.
+- [`draw_wallet`](shop.rs#L212) — La cartera en la esquina: moneda y cuenta.
 
 ### `draw.rs`
 

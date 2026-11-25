@@ -90,6 +90,7 @@ pub fn restore_archive(save: Option<WorldSave>) -> ChunkArchive {
 #[derive(Clone, Copy)]
 pub struct SavedSystems<'a> {
     pub carried: &'a iso::inventory::Carried,
+    pub wallet: &'a iso::economy::Wallet,
     pub drops: &'a iso::drops::Drops,
 }
 
@@ -103,7 +104,10 @@ pub fn snapshot_of(
     let systems = iso::world::seed_systems(seed);
     let systems = match parts {
         Some(parts) => iso::drops::with_drops(
-            iso::inventory::with_carried(systems, parts.carried),
+            iso::economy::with_wallet(
+                iso::inventory::with_carried(systems, parts.carried),
+                parts.wallet,
+            ),
             parts.drops,
         ),
         None => systems,

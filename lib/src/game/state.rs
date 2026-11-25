@@ -148,6 +148,18 @@ pub(crate) struct Game {
     pub(crate) items: iso::items::ItemCatalog,
     /// The player's slots and tools; saved in the save's `systems`.
     pub(crate) carried: iso::inventory::Carried,
+    /// What merchants pay and charge (`content/json/economy.json`).
+    pub(crate) economy: iso::economy::EconomyCatalog,
+    /// The player's coins; saved in the save's `systems`.
+    pub(crate) wallet: iso::economy::Wallet,
+    /// What this planet pays and charges today and the tools on the shelf; restocked each day.
+    pub(crate) market: iso::economy::Market,
+    /// The shop the player has open, if any; never saved.
+    pub(crate) shop: Option<crate::shop::Shop>,
+    /// The merchant in reach this frame, if any.
+    pub(crate) merchant: Option<iso::economy::Merchant>,
+    /// What a scripted run asked of the shop since the last frame.
+    pub(crate) scripted_trade: Vec<iso::testbed::SceneTrade>,
     /// The work on what is in reach; never saved, a reload starts the harvest over.
     pub(crate) harvester: iso::harvest::Harvester,
     /// What the harvest did on the last fixed step, for the prompt.
@@ -343,6 +355,14 @@ impl Game {
             None => iso::inventory::Carried::starting(iso::inventory::STARTING_SLOTS, &items),
         };
 
+        let economy_json = include_str!("../../content/json/economy.json");
+        let economy = iso::economy::parse_economy(economy_json, &items, &catalog)
+            .expect("economy content validates");
+        let wallet = saved_systems
+            .as_ref()
+            .and_then(iso::economy::saved_wallet)
+            .unwrap_or_default();
+
         let drops = saved_systems
             .as_ref()
             .and_then(|systems| iso::drops::saved_drops(systems, &items))
@@ -535,6 +555,16 @@ impl Game {
             wind_ms: 0.0,
             since_bird_call_ms: 0.0,
             bird_random: iso::player::DustRandom::new(world_seed),
+            market: iso::economy::Market::open(
+                &economy,
+                world_seed,
+                iso::time::clock_time(iso::time::WorldClock::default().tick).day,
+            ),
+            economy,
+            wallet,
+            shop: None,
+            merchant: None,
+            scripted_trade: Vec::new(),
             items,
             carried,
             harvester: iso::harvest::Harvester::default(),

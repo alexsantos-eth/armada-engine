@@ -316,6 +316,7 @@ impl Game {
                 self.world_seed,
                 crate::save::SavedSystems {
                     carried: &self.carried,
+                    wallet: &self.wallet,
                     drops: &self.drops,
                 },
             );
@@ -349,6 +350,8 @@ impl Game {
             };
             (input_service.poll(), Vec::new())
         };
+        let mut input = input;
+        self.update_shop(&mut input, frame_ms);
         self.player.walk = input.walk;
         set_player_run(&mut self.player, input.run);
         if input.jetpack_pressed {
@@ -509,6 +512,7 @@ impl Game {
                 self.world_seed,
                 crate::save::SavedSystems {
                     carried: &self.carried,
+                    wallet: &self.wallet,
                     drops: &self.drops,
                 },
             );

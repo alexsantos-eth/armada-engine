@@ -32,7 +32,7 @@ impl Camera for Posed {
     }
 }
 
-fn rgb(value: [u8; 3], alpha: f32) -> Color {
+pub(super) fn rgb(value: [u8; 3], alpha: f32) -> Color {
     Color::from_rgba(
         value[0],
         value[1],
@@ -66,7 +66,7 @@ fn posed(
     pop_camera_state();
 }
 
-fn draw_piece(skin: &ClaySkin, name: &str, shape: Rect, alpha: f32) {
+pub(super) fn draw_piece(skin: &ClaySkin, name: &str, shape: Rect, alpha: f32) {
     let (Some(piece), Some(texture)) = (skin.manifest.pieces.get(name), skin.pieces.get(name))
     else {
         return;
@@ -86,7 +86,7 @@ fn draw_piece(skin: &ClaySkin, name: &str, shape: Rect, alpha: f32) {
     }
 }
 
-fn draw_icon(texture: &Texture2D, rect: Rect, alpha: f32) {
+pub(super) fn draw_icon(texture: &Texture2D, rect: Rect, alpha: f32) {
     draw_texture_ex(
         texture,
         rect.x,
@@ -99,12 +99,12 @@ fn draw_icon(texture: &Texture2D, rect: Rect, alpha: f32) {
     );
 }
 
-fn text_width(skin: &ClaySkin, text: &str, size: f32) -> f32 {
+pub(super) fn text_width(skin: &ClaySkin, text: &str, size: f32) -> f32 {
     measure_text(text, Some(&skin.display), size as u16, 1.0).width
 }
 
 /// Writes `text` with its top-left at `(x, top)` in a line `size` tall, outlined `stroke` px.
-fn draw_label(
+pub(super) fn draw_label(
     skin: &ClaySkin,
     text: &str,
     (x, top): (f32, f32),

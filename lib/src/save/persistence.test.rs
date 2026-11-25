@@ -68,11 +68,16 @@ fn a_saved_archive_records_what_the_player_carries_and_the_heaps_on_the_ground()
         77,
         Some(SavedSystems {
             carried: &carried,
+            wallet: &iso::economy::Wallet::with(31),
             drops: &drops,
         }),
     );
     let restored = iso::inventory::saved_carried(&save.systems, 4, &items).unwrap();
     assert_eq!(restored.carried, carried);
+    assert_eq!(
+        iso::economy::saved_wallet(&save.systems),
+        Some(iso::economy::Wallet::with(31))
+    );
     assert_eq!(iso::drops::saved_drops(&save.systems, &items), Some(drops));
     assert_eq!(iso::world::saved_seed(&save.systems), Some(77));
 }

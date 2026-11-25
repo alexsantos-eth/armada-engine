@@ -149,4 +149,4 @@ Cada fase entrega un loop jugable completo antes de pasar a la siguiente.
 | 5. Herramientas electricas y automatas | Era 3 y 4; los automatas se colocan en el mundo y recolectan en idle | Fase 4 |
 | 6. Pulido: fauna hostil y escalado | Criaturas con IA de ataque; dificultad por numero de planeta visitado | Fase 5 |
 
-**Prioridad inmediata:** Fase 1 (inventario y recoleccion) es la base sin la que nada de lo demas funciona.
+**Prioridad inmediata:** Fase 3 (herramientas rudimentarias y mecanicas). Las fases 0, 1 y 2 estan hechas: la economia basica (moneda, puesto de mercado que compra y vende, estante diario) esta en `iso::economy` y `src/shop`.

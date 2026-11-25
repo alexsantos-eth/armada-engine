@@ -7,11 +7,13 @@ mod frame;
 mod hud;
 mod layout;
 mod motion;
+mod shop;
 mod skin;
 mod slice;
 
 pub(crate) use draw::{draw_clay_hud, draw_clay_stick};
-pub(crate) use frame::{UiAction, UiFrame, UiGain, UiStack};
+pub(crate) use frame::{ShopFrame, UiAction, UiFrame, UiGain, UiStack};
 pub(crate) use hud::ClayHud;
 pub(crate) use layout::HudLayout;
+pub(crate) use shop::{draw_shop, draw_shop_prompt, draw_wallet, shop_prompt_rect};
 pub(crate) use skin::ClaySkin;

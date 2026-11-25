@@ -40,6 +40,7 @@
   --ac-blob-bubble: 46% 54% 50% 50% / 58% 52% 48% 42%;
 
   --ac-slot: 64px;
+  --ac-coin: 34px;
   --ac-action: 104px;
   --ac-stick: 120px;
   --ac-stick-knob: 56px;
@@ -209,6 +210,57 @@ button.ac-slot:hover { transform: translateY(-3px) rotate(-1.5deg); }
   paint-order: stroke fill;
 }
 .ac-slot.is-bump { animation: ac-bump 450ms var(--ac-spring); }
+
+/* ---------- shop row and coin ---------- */
+
+.ac-row {
+  --ac-fill: var(--ac-paper);
+  position: relative;
+  isolation: isolate;
+  color: var(--ac-on-light);
+}
+.ac-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: var(--ac-line) solid var(--ac-ink);
+  border-radius: var(--ac-blob-small);
+  box-shadow: 3px 4px 0 var(--ac-ink);
+  background: var(--ac-noise), var(--ac-fill);
+  background-blend-mode: multiply;
+  filter: url(#ac-wobble);
+}
+.ac-row.is-selected { --ac-fill: var(--ac-gold); }
+.ac-row.is-disabled { --ac-fill: var(--ac-paper-shade); }
+.ac-row.is-disabled::before { box-shadow: 2px 3px 0 var(--ac-ink); opacity: 0.8; }
+.ac-coin {
+  --ac-fill: var(--ac-gold);
+  position: relative;
+  isolation: isolate;
+  width: var(--ac-coin);
+  height: var(--ac-coin);
+}
+.ac-coin::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: var(--ac-line-thin) solid var(--ac-ink);
+  border-radius: var(--ac-blob-round);
+  box-shadow: 2px 3px 0 var(--ac-ink);
+  background: var(--ac-noise), var(--ac-fill);
+  background-blend-mode: multiply;
+  filter: url(#ac-wobble);
+}
+.ac-coin::after {
+  content: "";
+  position: absolute;
+  inset: 24%;
+  border: var(--ac-line-thin) solid var(--ac-ink);
+  border-radius: 50%;
+  opacity: 0.45;
+}
 
 /* ---------- progress bar of a harvest under way ---------- */
 
