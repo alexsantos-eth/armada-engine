@@ -478,7 +478,7 @@ arma con piezas del kit como cualquier modelo, en un volumen 1x1x1, pero pequeñ
 tercio de la casilla), en el centro, sin suelo ni sombra. Uno por item de `items.json`, en el
 color de las astillas de su recolección (el `color` del item); el sprite va a
 `lib/assets/items/<id>.png` y el item lo nombra en `sprite`. El juego lo dibuja flotando sobre
-su propia sombra. `python3 artifacts/vox/clay/vox_items.py --render [item_<id> …]`. El cobre usa
+su propia sombra. `python3 artifacts/vox/clay/vox_items.py --render [item_<id> …]`; tras renderizar, `item_outline.py` le dibuja el **contorno de tinta negra** ondulado (estilo papel de la UI) y hay que regenerar los iconos de UI y el atlas (ver `lib/docs/ASSET-PIPELINE.md`). El cobre usa
 `COPPER` (`#a8532c`, variante `copper` de `ore`).
 
 ## 8. Antes de entregar
