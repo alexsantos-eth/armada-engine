@@ -8,7 +8,7 @@ use crate::items::{HarvestYield, ItemCatalog};
 use crate::projection::GridPoint;
 use crate::terrain::derive_seed;
 
-/// Farthest, in columns along either axis, a heap lands from the centre of what dropped it.
+/// Farthest, in columns, a heap lands from the centre of what dropped it.
 pub const DROP_SCATTER: f64 = 0.35;
 
 /// Farthest the player's feet may be from a heap, in columns, to pick it up.
@@ -26,7 +26,7 @@ pub const DROPS_PART: &str = "drops";
 /// The version of the drops' part this engine writes and reads.
 pub const DROPS_PART_VERSION: u32 = 1;
 
-/// One heap of one item on the ground.
+/// One item on the ground, or a multi-unit heap from an older save.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Drop {
     /// Unique among the heaps of a world, never reused.
@@ -61,7 +61,7 @@ pub struct StackGain {
     pub amount: u32,
 }
 
-/// What a pick-up took by heap and by destination slot, and whether something did not fit.
+/// What a pick-up took by item and by destination slot, and whether something did not fit.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Collected {
     pub gained: Vec<HarvestYield>,
@@ -82,27 +82,29 @@ impl Drops {
         &self.list
     }
 
-    /// Drops one heap per yield of a felling, scattered around its anchor by a stream seeded from
+    /// Drops one item per unit yielded by a felling, scattered around its anchor by a stream seeded from
     /// its id, so the same felling always lands in the same places.
     pub fn spawn(&mut self, felled: Felled<'_>, yields: &[HarvestYield]) {
         let from = GridPoint {
             x: f64::from(felled.anchor.x),
             y: f64::from(felled.anchor.y),
         };
-        let count = yields.len().max(1) as f64;
-        let turn = unit(derive_seed(0, &format!("drop@{}", felled.id)));
-        for (index, gained) in yields.iter().enumerate() {
-            let reach =
-                0.55 + 0.45 * unit(derive_seed(index as u64, &format!("drop@{}", felled.id)));
-            let angle = std::f64::consts::TAU * (turn + index as f64 / count);
-            let along = |value: f64| (value * reach).clamp(-1.0, 1.0) * DROP_SCATTER;
+        let count: u64 = yields.iter().map(|gained| u64::from(gained.amount)).sum();
+        let seed = format!("drop@{}", felled.id);
+        let turn = unit(derive_seed(0, &seed));
+        let units = yields
+            .iter()
+            .flat_map(|gained| (0..gained.amount).map(move |_| &gained.item));
+        for (index, item) in units.enumerate() {
+            let reach = DROP_SCATTER * (0.55 + 0.45 * unit(derive_seed(index as u64, &seed)));
+            let angle = std::f64::consts::TAU * (turn + index as f64 / count as f64);
             self.list.push(Drop {
                 id: self.next_id,
-                item: gained.item.clone(),
-                amount: gained.amount,
+                item: item.clone(),
+                amount: 1,
                 at: GridPoint {
-                    x: from.x + along(angle.cos()),
-                    y: from.y + along(angle.sin()),
+                    x: from.x + reach * angle.cos(),
+                    y: from.y + reach * angle.sin(),
                 },
                 elevation: f64::from(felled.elevation),
                 from,
@@ -134,18 +136,30 @@ impl Drops {
                 continue;
             }
             let left = inventory.add_with_slots(&drop.item, drop.amount, items, |slot, amount| {
-                collected.stacks.push(StackGain {
-                    slot,
-                    item: drop.item.clone(),
-                    amount,
-                });
+                if let Some(gain) = collected.stacks.iter_mut().find(|gain| gain.slot == slot) {
+                    gain.amount += amount;
+                } else {
+                    collected.stacks.push(StackGain {
+                        slot,
+                        item: drop.item.clone(),
+                        amount,
+                    });
+                }
             });
             let taken = drop.amount - left;
             if taken > 0 {
-                collected.gained.push(HarvestYield {
-                    item: drop.item.clone(),
-                    amount: taken,
-                });
+                if let Some(gain) = collected
+                    .gained
+                    .iter_mut()
+                    .find(|gain| gain.item == drop.item)
+                {
+                    gain.amount = gain.amount.saturating_add(taken);
+                } else {
+                    collected.gained.push(HarvestYield {
+                        item: drop.item.clone(),
+                        amount: taken,
+                    });
+                }
             }
             collected.refused |= left > 0;
             drop.amount = left;

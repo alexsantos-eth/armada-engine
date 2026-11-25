@@ -64,7 +64,7 @@ El trabajo en curso no se guarda: un objetivo a medias empieza de cero tras reca
 #### Constantes
 
 - [`HARVEST_STRIKE_TICKS`](harvester.rs#L9) — Ticks de un ciclo de animación y sonido: alzar, golpear, seguir.
-  - Declaración: `pub const HARVEST_STRIKE_TICKS: u32 = 5;`
+  - Declaración: `pub const HARVEST_STRIKE_TICKS: u32 = 6;`
 - [`HARVEST_STRIKE_AT`](harvester.rs#L11) — Tick del golpe en que caen las manos.
   - Declaración: `pub const HARVEST_STRIKE_AT: u32 = 3;`
 

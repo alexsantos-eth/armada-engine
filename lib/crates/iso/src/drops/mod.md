@@ -2,9 +2,9 @@
 
 Este dominio guarda los montones de items que hay en el suelo. Al derribar algo, su rendimiento no va directo al inventario: cae alrededor de donde estaba y el jugador lo recoge al pasar por encima. Lo que no cabe en el inventario se queda en el suelo hasta que haya sitio.
 
-- **Dónde cae** (`Drops::spawn`): un montón por cada rendimiento de la regla, a como mucho `DROP_SCATTER` columnas del ancla, repartidos en círculo desde un giro que sale de un flujo sembrado con el id de la entidad (`derive_seed`): el mismo derribo cae siempre en los mismos sitios. Cada montón recuerda de dónde salió (`from`), para que la vista lo lance desde ahí.
+- **Dónde cae** (`Drops::spawn`): un objeto por cada unidad de la regla, a como mucho `DROP_SCATTER` columnas del ancla, repartidos en círculo desde un giro que sale de un flujo sembrado con el id de la entidad (`derive_seed`): el mismo derribo cae siempre en los mismos sitios. Cada objeto recuerda de dónde salió (`from`), para que la vista lo lance desde ahí.
 - **Recogerlo** (`Drops::collect`, en el paso fijo): un montón recién caído espera `PICKUP_DELAY_TICKS`; después, si los pies están a `PICKUP_REACH` columnas y `PICKUP_LEVEL_REACH` bloques, entra al inventario todo lo que cabe y el resto se queda (`Collected::refused`).
-- **Guardado**: su propia parte versionada en `systems.drops` (`DROPS_PART`, `DROPS_PART_VERSION`), con el siguiente id para que nunca se repita. Al reabrir se dejan fuera los montones de items que el catálogo ya no declara.
+- **Guardado**: su propia parte versionada en `systems.drops` (`DROPS_PART`, `DROPS_PART_VERSION`), con el siguiente id para que nunca se repita. Los montones de guardados anteriores conservan su cantidad. Al reabrir se dejan fuera los montones de items que el catálogo ya no declara.
 
 Los montones no viven en los chunks ni en el catálogo de entidades: no se generan, no colisionan y no proyectan sombra horneada. El cliente los dibuja (`src/harvest/drop_view.rs`).
 
@@ -16,18 +16,18 @@ Los montones no viven en los chunks ni en el catálogo de entidades: no se gener
 
 - [`Drops::list`](ground.rs#L81) — Los montones, del más viejo al más nuevo.
   - Firma: `pub fn list(&self) -> &[Drop] {`
-- [`Drops::spawn`](ground.rs#L87) — Deja un montón por rendimiento alrededor del ancla de lo derribado.
+- [`Drops::spawn`](ground.rs#L87) — Deja un objeto por unidad alrededor del ancla de lo derribado.
   - Firma: `pub fn spawn(&mut self, felled: Felled<'_>, yields: &[HarvestYield]) {`
-- [`Drops::collect`](ground.rs#L118) — Deja pasar `ticks` y recoge en el inventario los montones al alcance de los pies que ya no esperan, tanto de cada uno como quepa.
+- [`Drops::collect`](ground.rs#L120) — Deja pasar `ticks` y recoge en el inventario los montones al alcance de los pies que ya no esperan, tanto de cada uno como quepa.
   - Firma: `pub fn collect( &mut self, feet: Feet, inventory: &mut Inventory, items: &ItemCatalog, ticks: u32, ) -> Collected {`
-- [`with_drops`](ground.rs#L171) — `systems` con la parte de los montones escrita; las demás partes quedan como estaban.
+- [`with_drops`](ground.rs#L185) — `systems` con la parte de los montones escrita; las demás partes quedan como estaban.
   - Firma: `pub fn with_drops(mut systems: serde_json::Value, drops: &Drops) -> serde_json::Value {`
-- [`saved_drops`](ground.rs#L187) — Los montones que registra el guardado, o `None` si es anterior a la parte o de otra versión.
+- [`saved_drops`](ground.rs#L201) — Los montones que registra el guardado, o `None` si es anterior a la parte o de otra versión.
   - Firma: `pub fn saved_drops(systems: &serde_json::Value, items: &ItemCatalog) -> Option<Drops> {`
 
 #### Constantes
 
-- [`DROP_SCATTER`](ground.rs#L12) — Distancia máxima, por eje, a la que cae un montón del centro de lo que lo soltó.
+- [`DROP_SCATTER`](ground.rs#L12) — Distancia máxima a la que cae un montón del centro de lo que lo soltó.
   - Declaración: `pub const DROP_SCATTER: f64 = 0.35;`
 - [`PICKUP_REACH`](ground.rs#L15) — Distancia máxima de los pies a un montón para recogerlo.
   - Declaración: `pub const PICKUP_REACH: f64 = 0.55;`
@@ -39,8 +39,8 @@ Los montones no viven en los chunks ni en el catálogo de entidades: no se gener
 
 #### Tipos
 
-- [`Drop`](ground.rs#L31) — Un montón de un item en el suelo: id, item, cantidad, dónde está, en qué bloque, de dónde salió y cuántos ticks le quedan de espera.
+- [`Drop`](ground.rs#L31) — Un objeto en el suelo o un montón de un guardado anterior: id, item, cantidad, dónde está, en qué bloque, de dónde salió y cuántos ticks le quedan de espera.
 - [`Felled`](ground.rs#L49) — Lo derribado, tal como lo necesita la caída: id de instancia, ancla y bloque.
 - [`StackGain`](ground.rs#L58) — El slot de destino, el ítem y las unidades depositadas durante la recogida de un montón.
-- [`Collected`](ground.rs#L66) — Los totales recogidos por montón, los depósitos por slot y si algo al alcance quedó fuera.
+- [`Collected`](ground.rs#L66) — Los totales recogidos por tipo de objeto, los depósitos por slot y si algo al alcance quedó fuera.
 - [`Drops`](ground.rs#L74) — Todos los montones del suelo.
