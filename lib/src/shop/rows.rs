@@ -100,13 +100,8 @@ pub(crate) fn rows(tab: Tab, stock: &ShopStock<'_>) -> Vec<ShopRow> {
                     detail: format!("Nivel {}", tool.tier),
                     coins: u64::from(offer.coins),
                     enabled: !owned && !poor,
-                    note: if owned {
-                        Some("Ya la tienes")
-                    } else if poor {
-                        Some("Faltan monedas")
-                    } else {
-                        None
-                    },
+                    // A tool that costs too much is only greyed out: no text says why.
+                    note: owned.then_some("Ya la tienes"),
                 })
             })
             .collect(),

@@ -118,10 +118,16 @@ pub(crate) async fn run(mut game: Game) {
             draw_depth(&mut game.atlas, &game.draws, &view.depth);
             game.depth_target.end();
         }
+        game.menu_blur = crate::rendering::backdrop::fade(
+            game.menu_blur,
+            game.shop.is_some() || game.clay_hud.inventory_open,
+            frame_ms,
+        );
         game.scene_target.present(
             game.grade.as_ref(),
             &grade,
             (game.depth_target.texture(), view.depth.focus()),
+            game.menu_blur,
         );
         let picked = std::mem::take(&mut game.pending_gains);
         let mut stick_tool = None;
@@ -140,6 +146,7 @@ pub(crate) async fn run(mut game: Game) {
                 game.gain_note.as_ref().map(|(text, _)| text.as_str()),
                 game.touch.visible(),
                 progress_at,
+                game.merchant.is_some() && game.shop.is_none(),
             );
             let gains = crate::harvest::hud_frame::gains(&picked, &game.items, at);
             let layout = crate::ui::HudLayout::new(width, height, frame.slots.len(), frame.touch);

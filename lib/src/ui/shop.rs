@@ -167,7 +167,7 @@ pub(crate) fn draw_shop(skin: &ClaySkin, frame: &ShopFrame, layout: &ShopLayout)
     }
     coin_and_text(
         skin,
-        &format!("{} {}", frame.coins, frame.currency),
+        &frame.coins.to_string(),
         (layout.footer.x + 4.0, layout.footer.y + 2.0),
         30.0,
         cream,
@@ -187,9 +187,9 @@ pub(crate) fn draw_shop(skin: &ClaySkin, frame: &ShopFrame, layout: &ShopLayout)
     }
 }
 
-/// The icon floating over each market in view, bobbing; the one in reach pulses.
+/// The icon floating over the market in reach, bobbing and pulsing; far markets show none.
 pub(crate) fn draw_market_marks(skin: &ClaySkin, marks: &[MarketMark], clock_ms: f64) {
-    for mark in marks {
+    for mark in marks.iter().filter(|mark| mark.near) {
         let pose = mark_pose(clock_ms, mark.at.0 * 0.013, mark.near);
         let mut shape = mark_rect(mark);
         shape.y -= pose.lift;
@@ -200,16 +200,16 @@ pub(crate) fn draw_market_marks(skin: &ClaySkin, marks: &[MarketMark], clock_ms:
     }
 }
 
-/// The wallet in the corner: coin and count.
-pub(crate) fn draw_wallet(skin: &ClaySkin, coins: u64, currency: &str) {
-    let text = format!("{coins} {currency}");
+/// The wallet in the corner: a rounded paper tag with the coin and the count, no words.
+pub(crate) fn draw_wallet(skin: &ClaySkin, coins: u64) {
+    let text = coins.to_string();
     let width = coin_width(skin, &text, 30.0) + 36.0;
     let rect = Rect::new(18.0, 18.0, width, 50.0);
-    draw_piece(skin, "bubble", rect, 1.0);
+    draw_piece(skin, "shop_row", rect, 1.0);
     coin_and_text(
         skin,
         &text,
-        (rect.x + 16.0, rect.y + 10.0),
+        (rect.x + 18.0, rect.y + 10.0),
         30.0,
         rgb(skin.palette.ink, 1.0),
     );

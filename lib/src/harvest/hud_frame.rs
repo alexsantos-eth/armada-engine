@@ -23,6 +23,14 @@ fn action_of(blueprint: &str, items: &ItemCatalog) -> UiAction {
     }
 }
 
+/// The button next to a market: the hand and the verb of opening the shop.
+fn trade_action() -> UiAction {
+    UiAction {
+        tool: "hand".into(),
+        verb: "Comerciar".into(),
+    }
+}
+
 /// The name of what the harvest yields: the first yield's item, as the catalog names it.
 fn yield_name(target: &HarvestTarget, items: &ItemCatalog) -> Option<String> {
     items
@@ -43,6 +51,7 @@ pub(crate) fn hud_frame(
     note: Option<&str>,
     touch: bool,
     progress_at: Option<(f32, f32)>,
+    trade: bool,
 ) -> UiFrame {
     let (progress, progress_name, action) = match status {
         HarvestStatus::Ready { target } | HarvestStatus::Approaching { target } => (
@@ -62,6 +71,12 @@ pub(crate) fn hud_frame(
         HarvestStatus::Idle | HarvestStatus::Done { .. } | HarvestStatus::Blocked { .. } => {
             (None, None, None)
         }
+    };
+    // Next to a market the action button trades, whatever else is in reach.
+    let (progress, progress_name, action) = if trade {
+        (None, None, Some(trade_action()))
+    } else {
+        (progress, progress_name, action)
     };
     UiFrame {
         visible: true,

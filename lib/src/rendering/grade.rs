@@ -50,12 +50,13 @@ uniform vec4 Tint;
 uniform vec4 Lift;
 uniform float Saturation;
 uniform vec2 TexelSize;
+uniform float MenuBlur;
 "#;
 
 const FRAGMENT_BODY: &str = r#"
 void main() {
-    float radius = blurRadius(uv);
-    float focus = 1.0 - radius / MaxBlurRadius;
+    float radius = max(blurRadius(uv), MenuBlur);
+    float focus = max(1.0 - radius / MaxBlurRadius, 0.0);
     vec3 colour = bokeh(uv, radius);
     colour = lensTone(colour, focus);
     float luma = dot(colour, vec3(0.299, 0.587, 0.114));
@@ -246,6 +247,7 @@ impl GradeMaterial {
                     UniformDesc::new("FocalHalfHeight", UniformType::Float1),
                     UniformDesc::new("TransitionHeight", UniformType::Float1),
                     UniformDesc::new("MaxBlurRadius", UniformType::Float1),
+                    UniformDesc::new("MenuBlur", UniformType::Float1),
                 ],
                 textures: vec![DEPTH_MAP.to_owned()],
             },
@@ -255,8 +257,14 @@ impl GradeMaterial {
     }
 
     /// Applies the presentation uniforms, with the depth of field focused at `focus` over
-    /// `depth`, and draws what follows with this material.
-    pub fn bind(&self, grade: &PhaseGrade, texel_size: Vec2, depth: &Texture2D, focus: f32) {
+    /// `depth` and everything blurred at least `menu_blur` pixels (an open menu's backdrop), and draws what follows with this material.
+    pub fn bind(
+        &self,
+        grade: &PhaseGrade,
+        texel_size: Vec2,
+        depth: &Texture2D,
+        (focus, menu_blur): (f32, f32),
+    ) {
         self.material
             .set_uniform("Tint", vec4(grade.tint.r, grade.tint.g, grade.tint.b, 1.0));
         self.material
@@ -264,6 +272,7 @@ impl GradeMaterial {
         self.material.set_uniform("Saturation", grade.saturation);
         self.material.set_uniform("TexelSize", texel_size);
         self.material.set_uniform("FocusDepth", focus);
+        self.material.set_uniform("MenuBlur", menu_blur);
         self.material
             .set_uniform("FocalHalfHeight", FOCAL_HALF_HEIGHT);
         self.material
