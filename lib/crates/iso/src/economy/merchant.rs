@@ -6,7 +6,7 @@ use crate::grid::WorldCoord;
 use crate::harvest::Feet;
 
 /// Farthest, in columns, the player's feet may be from a merchant's nearest cell to trade.
-pub const TRADE_REACH: f64 = 3.0;
+pub const TRADE_REACH: f64 = 2.0;
 
 /// Most blocks between a merchant's base and the player's feet for them to trade.
 pub const TRADE_LEVEL_REACH: f64 = 2.0;
