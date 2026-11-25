@@ -196,27 +196,26 @@ fn a_full_inventory_does_not_stop_the_harvest() {
 fn blows_land_on_the_beat_of_the_swing() {
     let items = items();
     let carried = Carried::starting(4, &items);
-    let rock = target("tree", 1);
+    let tree = target("tree", 1);
     let mut harvester = Harvester::default();
-    step(
-        &mut harvester,
-        true,
-        Some(&rock),
-        &carried,
-        HARVEST_STRIKE_AT - 1,
-    );
+    step(&mut harvester, true, Some(&tree), &carried, 2);
     assert_eq!(harvester.strikes(), 0);
-    assert_eq!(harvester.swing(), HARVEST_STRIKE_AT - 1);
-    step(&mut harvester, true, Some(&rock), &carried, 1);
+    assert_eq!(harvester.swing(), 2);
+    step(&mut harvester, true, Some(&tree), &carried, 1);
     assert_eq!(harvester.strikes(), 1);
-    step(
-        &mut harvester,
-        true,
-        Some(&rock),
-        &carried,
-        HARVEST_STRIKE_TICKS,
-    );
+    assert_eq!(harvester.swing(), HARVEST_STRIKE_AT);
+    step(&mut harvester, true, Some(&tree), &carried, 4);
+    assert_eq!(harvester.strikes(), 1);
+    assert!(matches!(
+        step(&mut harvester, true, Some(&tree), &carried, 1),
+        HarvestStatus::Working {
+            progress: 80,
+            total: 400,
+            ..
+        }
+    ));
     assert_eq!(harvester.strikes(), 2);
+    assert_eq!(harvester.swing(), HARVEST_STRIKE_AT);
 }
 
 #[test]
