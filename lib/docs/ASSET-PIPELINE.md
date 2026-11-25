@@ -80,7 +80,7 @@ piedra y de construcción: muros y tejados sobre el mismo módulo de 28.
 
 `artifacts/vox/clay/vox_items.py` arma los items que caen al suelo al recolectar (madera, piedra,
 fibra, hongo, coco, hueso, cobre y ámbar): montones pequeños en el centro de un volumen 1x1x1,
-renderizados a `lib/assets/items/<id>.png`, que cada item de `content/json/items.json` nombra en `sprite`.
+renderizados a `lib/assets/items/<id>.png`, que cada item de `content/json/items.json` nombra en `sprite`. Cada sprite lleva un **contorno de tinta negra** (`#1a120d`, el `--ac-ink` del kit de UI) algo ondulado, de 11 px en el original (unos tres en el atlas), como el recorte de papel de la interfaz: lo dibuja `artifacts/vox/clay/item_outline.py`, que `vox_items.py --render` llama tras cada render. Es idempotente (el PNG ya contorneado lleva un chunk `armada-outline` y se salta). Tras cambiar un sprite de item: `python3 lib/scripts/build-ui-icons.py`, copiar `web/ui/items/*.png` a `content/ui/items/` y `lib/scripts/build-atlas.sh`.
 
 `artifacts/vox/clay/terrain_clay.py` genera todo el terreno de suelo: hierba
 (`grass/block.png` y `block_2..4.png`), tierra (`ground/block.png`, `block_2..3.png`), arena

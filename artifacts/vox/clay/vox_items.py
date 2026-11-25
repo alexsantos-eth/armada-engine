@@ -6,6 +6,9 @@
 #   python3 vox_items.py --render        → …and each one rendered onto lib/assets/items/<id>.png
 #   python3 vox_items.py --render wood   only those
 #
+# Every rendered sprite gets the ink outline of item_outline.py, so it reads on the ground like
+# the paper cut-outs of the UI kit.
+#
 # An item lies loose on the ground in the middle of a 1x1x1 tile: a small heap, much lower and
 # narrower than an entity (about a third of the tile across), so it reads as something to pick
 # up and not as something that grows there. The game draws it bobbing over its own shadow, so
@@ -13,6 +16,7 @@
 # kind of thing it is, in the colour the chips of its harvest fly in (`color` in items.json).
 import sys
 
+from item_outline import main as outline_main
 from vox_models import put, run
 
 
@@ -75,3 +79,7 @@ MODELS = {
 
 if __name__ == "__main__":
     run(MODELS, sys.argv[1:])
+    if "--render" in sys.argv:
+        # The sprites leave Blender bare; the ink line is drawn over them (item_outline.py).
+        outline_main([a[len("item_"):] if a.startswith("item_") else a
+                      for a in sys.argv[1:] if a != "--render"])
