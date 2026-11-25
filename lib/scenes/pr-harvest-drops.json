@@ -1,0 +1,24 @@
+{
+  "world": "procedural",
+  "window": [1280, 800],
+  "zoom": 2.2,
+  "phase": "day",
+  "centre": [-12, 142],
+  "player": [-12, 142],
+  "edits": [
+    {"surface": {"at": [-9, 142], "material": "grass"}},
+    {"place": {"at": [-9, 142], "blueprint": "tree"}},
+    {"place": {"at": [-13, 147], "blueprint": "rock_small"}}
+  ],
+  "steps": [
+    "settle",
+    {"shot": "harvest-ready.png"},
+    {"gather": {"frames": 55}},
+    {"teleport": [-10, 143]},
+    {"wait": {"frames": 18}},
+    "settle",
+    {"shot": "three-wood-drops.png"}
+  ],
+  "out": "shots-harvest-drops",
+  "maxFrames": 1600
+}

@@ -29,20 +29,21 @@ fn felled() -> Felled<'static> {
 }
 
 #[test]
-fn a_felling_drops_one_heap_per_yield_around_where_it_stood() {
+fn a_felling_drops_one_item_per_unit_around_where_it_stood() {
     let mut drops = Drops::default();
     drops.spawn(felled(), &yields(&[("wood", 3), ("stone", 1)]));
-    assert_eq!(drops.list().len(), 2);
-    let wood = &drops.list()[0];
-    assert_eq!((wood.item.as_str(), wood.amount), ("wood", 3));
-    assert_eq!(wood.elevation, 2.0);
-    assert_eq!(wood.from, GridPoint { x: 4.0, y: 7.0 });
-    for drop in drops.list() {
-        let apart = (drop.at.x - 4.0).abs().max((drop.at.y - 7.0).abs());
-        assert!(apart <= DROP_SCATTER + 1e-9, "{drop:?}");
+    assert_eq!(drops.list().len(), 4);
+    for (index, drop) in drops.list().iter().enumerate() {
+        let item = if index < 3 { "wood" } else { "stone" };
+        assert_eq!((drop.item.as_str(), drop.amount), (item, 1));
+        assert_eq!(drop.elevation, 2.0);
+        assert_eq!(drop.from, GridPoint { x: 4.0, y: 7.0 });
+        assert!((drop.at.x - 4.0).hypot(drop.at.y - 7.0) <= DROP_SCATTER + 1e-9);
+        for previous in &drops.list()[..index] {
+            assert_ne!(drop.at, previous.at);
+            assert_ne!(drop.id, previous.id);
+        }
     }
-    assert_ne!(drops.list()[0].at, drops.list()[1].at);
-    assert_ne!(drops.list()[0].id, drops.list()[1].id);
 }
 
 #[test]
@@ -51,7 +52,7 @@ fn the_same_felling_always_drops_in_the_same_places() {
     let mut other = Drops::default();
     one.spawn(felled(), &yields(&[("wood", 3)]));
     other.spawn(felled(), &yields(&[("wood", 3)]));
-    assert_eq!(one.list()[0].at, other.list()[0].at);
+    assert_eq!(one, other);
 }
 
 #[test]
@@ -59,7 +60,7 @@ fn walking_over_a_heap_picks_it_up() {
     let items = items();
     let mut drops = Drops::default();
     drops.spawn(felled(), &yields(&[("wood", 3)]));
-    let at = drops.list()[0].at;
+    let at = GridPoint { x: 4.0, y: 7.0 };
     let mut inventory = Inventory::new(4);
     let far = drops.collect(
         Feet {
@@ -75,13 +76,7 @@ fn walking_over_a_heap_picks_it_up() {
     );
     assert!(far.gained.is_empty());
     let near = drops.collect(
-        Feet {
-            at: GridPoint {
-                x: at.x + PICKUP_REACH * 0.5,
-                y: at.y,
-            },
-            elevation: 2.0,
-        },
+        Feet { at, elevation: 2.0 },
         &mut inventory,
         &items,
         PICKUP_DELAY_TICKS,
@@ -97,14 +92,15 @@ fn what_does_not_fit_stays_on_the_ground() {
     let items = items();
     let mut drops = Drops::default();
     drops.spawn(felled(), &yields(&[("wood", 60)]));
-    let at = drops.list()[0].at;
+    let at = GridPoint { x: 4.0, y: 7.0 };
     let mut inventory = Inventory::new(1);
     let feet = Feet { at, elevation: 2.0 };
     let first = drops.collect(feet, &mut inventory, &items, PICKUP_DELAY_TICKS);
     assert_eq!(first.gained, yields(&[("wood", 50)]));
     assert_eq!(first.stacks[0].amount, 50);
     assert!(first.refused);
-    assert_eq!(drops.list()[0].amount, 10);
+    assert_eq!(drops.list().len(), 10);
+    assert!(drops.list().iter().all(|drop| drop.amount == 1));
     let again = drops.collect(feet, &mut inventory, &items, PICKUP_DELAY_TICKS);
     assert!(again.gained.is_empty());
     assert!(again.stacks.is_empty());
@@ -120,7 +116,7 @@ fn a_pickup_reports_the_partial_stack_and_new_slots_it_fills() {
     let mut drops = Drops::default();
     drops.spawn(felled(), &yields(&[("wood", 55)]));
     let feet = Feet {
-        at: drops.list()[0].at,
+        at: GridPoint { x: 4.0, y: 7.0 },
         elevation: 2.0,
     };
     let picked = drops.collect(feet, &mut inventory, &items, PICKUP_DELAY_TICKS);
@@ -141,7 +137,7 @@ fn a_heap_on_another_level_is_not_picked_up() {
     let items = items();
     let mut drops = Drops::default();
     drops.spawn(felled(), &yields(&[("wood", 3)]));
-    let at = drops.list()[0].at;
+    let at = GridPoint { x: 4.0, y: 7.0 };
     let mut inventory = Inventory::new(4);
     let gained = drops.collect(
         Feet { at, elevation: 5.0 },
@@ -162,10 +158,10 @@ fn the_heaps_read_back_from_a_save_as_they_were() {
     let restored = saved_drops(&written, &items).unwrap();
     assert_eq!(
         restored.list().len(),
-        1,
+        3,
         "an item the catalog lacks is left out"
     );
-    assert_eq!(restored.list()[0], drops.list()[0]);
+    assert_eq!(restored.list(), &drops.list()[..3]);
     let mut more = restored.clone();
     more.spawn(
         Felled {
@@ -176,7 +172,7 @@ fn the_heaps_read_back_from_a_save_as_they_were() {
         &yields(&[("stone", 1)]),
     );
     assert!(
-        more.list()[1].id > drops.list()[1].id,
+        more.list()[3].id > drops.list()[3].id,
         "new heaps never reuse an id"
     );
     assert_eq!(saved_drops(&serde_json::json!({}), &items), None);
@@ -188,7 +184,7 @@ fn a_new_heap_waits_a_moment_before_it_can_be_picked_up() {
     let mut drops = Drops::default();
     drops.spawn(felled(), &yields(&[("wood", 3)]));
     let feet = Feet {
-        at: drops.list()[0].at,
+        at: GridPoint { x: 4.0, y: 7.0 },
         elevation: 2.0,
     };
     let mut inventory = Inventory::new(4);
@@ -196,4 +192,33 @@ fn a_new_heap_waits_a_moment_before_it_can_be_picked_up() {
     assert!(early.gained.is_empty());
     let late = drops.collect(feet, &mut inventory, &items, 1);
     assert_eq!(late.gained, yields(&[("wood", 3)]));
+}
+
+#[test]
+fn a_legacy_heap_keeps_its_amount_when_restored_and_picked_up() {
+    let items = items();
+    let systems = serde_json::json!({
+        "drops": {
+            "version": 1,
+            "next_id": 1,
+            "drops": [{
+                "id": 0, "item": "wood", "amount": 3,
+                "at": {"x": 4.0, "y": 7.0},
+                "from": {"x": 4.0, "y": 7.0},
+                "elevation": 2.0
+            }]
+        }
+    });
+    let mut drops = saved_drops(&systems, &items).unwrap();
+    assert_eq!(drops.list()[0].amount, 3);
+    let mut inventory = Inventory::new(1);
+    let feet = Feet {
+        at: drops.list()[0].at,
+        elevation: 2.0,
+    };
+    assert_eq!(
+        drops.collect(feet, &mut inventory, &items, 1).gained,
+        yields(&[("wood", 3)])
+    );
+    assert!(drops.list().is_empty());
 }
