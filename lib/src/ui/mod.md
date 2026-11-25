@@ -102,3 +102,8 @@ Pinta la tienda con el kit y no tiene test (excepción de GPU de `FILE_STRUCTURE
   - Firma: `pub(crate) fn draw_clay_stick( skin: &ClaySkin, view: &StickView, tool: Option<&str>, clock_ms: f64, ) {`
 - [`draw_clay_hud`](draw.rs#L439) — Pinta la barra de progreso con el material que va a soltar arriba del jugador, el panel y los slots, el botón de acción, el globo de aviso y los números voladores. Dibuja la mochila cerrada o abierta según el estado del inventario táctil. La pieza `progress` es el fondo oscuro de la barra y `progress_fill` se estira dentro de su contorno según el avance.
   - Firma: `pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, layout: &HudLayout) {`
+
+### Toasts
+
+- `toast.rs` — Notas breves con icono que bajan desde arriba, se quedan `LIFE_MS` (2,8 s) y se desvanecen solas. `Toasts::push(Toast)` las muestra (máximo cuatro; la más vieja sale), `advance(frame_ms)` las envejece, `toast_pose(age_ms)` da su opacidad y desplazamiento. `Toast::new(icono, texto)` + `with_coins(monto, ganadas)` + `warning()`. El icono es un item (`ToastIcon::Item`) o una pieza del kit (`ToastIcon::Piece`, p. ej. las herramientas). Cualquier parte del juego puede lanzar una: `game.toasts.push(…)`. Lo puro va probado en `toast.test.rs`.
+- `toast_draw.rs` — `draw_toasts` las pinta de arriba abajo, centradas, con las piezas `toast` (crema) y `toast_warning` (roja) del kit. Hoy las usa la tienda al vender y comprar.

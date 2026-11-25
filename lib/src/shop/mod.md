@@ -6,7 +6,7 @@ La tienda que abre un comerciante, en el cliente. Las reglas (precios, estante, 
 
 - Pestañas **Vender** (lo que lleva y las aldeas pagan, una fila por item sumando slots: elegirla vende todas las unidades) y **Comprar** (el estante del día, barato primero; una fila apagada, con su estilo disabled, es la que no se puede comprar: si ya la tienes dice «Ya la tienes» y si no alcanzan las monedas no dice nada).
 - Teclado: flechas o `W`/`S` suben y bajan, flechas o `A`/`D` cambian de pestaña, `Intro` o `Espacio` tratan la fila, `Esc` cierra. Puntero y táctil: tocar una pestaña la abre, tocar una fila la elige y tocar la elegida la trata (dos toques, para no vender sin querer), tocar la X o fuera del panel cierra.
-- Cada trato suena (`ItemCollect`), vibra y deja un globo con lo ocurrido («Vendiste Madera por 28 Monedas», «Compraste Trampa de bejuco por 36 Monedas»). La cartera (una etiqueta rectangular redondeada con la moneda y la cuenta, sin palabras) se ve en la esquina cuando tiene monedas. Con la tienda abierta el mundo de fondo se desenfoca (`rendering::backdrop`).
+- Cada trato suena (`ItemCollect`), vibra y deja un **toast** arriba con el icono del item o la herramienta, lo ocurrido y las monedas que se movieron («Vendiste Madera +28», «Compraste Trampa de bejuco -36»); intentar comprar lo que ya se tiene saca un toast rojo, y lo que no alcanza no dice nada. La cartera (una etiqueta rectangular redondeada con la moneda y la cuenta, sin palabras) se ve en la esquina cuando tiene monedas. Con la tienda abierta el mundo de fondo se desenfoca (`rendering::backdrop`).
 
 La tienda abierta no se guarda: solo la cartera (`systems.economy`) y lo que cambió en el inventario.
 

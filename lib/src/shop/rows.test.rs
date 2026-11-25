@@ -89,7 +89,9 @@ fn choosing_a_row_trades_and_says_so() {
     };
     let sale = rows(Tab::Sell, &stock).remove(0);
     let said = trade(&sale, &mut carried, &mut wallet, &market, &economy, &items).unwrap();
-    assert!(said.starts_with("Vendiste Madera por "), "{said}");
+    assert_eq!(said.text, "Vendiste Madera");
+    assert!(said.earned);
+    assert_eq!(said.coins, sale.coins);
     assert_eq!(carried.inventory.count("wood"), 0);
     assert_eq!(wallet.coins(), sale.coins);
     // Selling the same row again finds nothing to sell.
@@ -112,7 +114,9 @@ fn choosing_a_row_trades_and_says_so() {
         note: None,
     };
     let said = trade(&pick, &mut carried, &mut rich, &market, &economy, &items).unwrap();
-    assert!(said.starts_with("Compraste "), "{said}");
+    assert!(said.text.starts_with("Compraste "), "{}", said.text);
+    assert!(!said.earned);
+    assert_eq!(said.coins, u64::from(offer.coins));
     assert_eq!(rich.coins(), 10_000 - u64::from(offer.coins));
     assert_eq!(
         trade(&pick, &mut carried, &mut rich, &market, &economy, &items),

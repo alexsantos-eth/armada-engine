@@ -53,6 +53,4 @@ pub(crate) struct ShopFrame {
     pub(crate) tab: crate::shop::Tab,
     pub(crate) cursor: usize,
     pub(crate) rows: Vec<crate::shop::ShopRow>,
-    /// What the last trade said.
-    pub(crate) message: Option<String>,
 }

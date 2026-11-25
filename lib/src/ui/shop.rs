@@ -53,6 +53,23 @@ fn coin_and_text(skin: &ClaySkin, text: &str, (x, top): (f32, f32), side: f32, f
     );
 }
 
+/// A kit piece (a tool's icon) drawn into a square `icon_at`, its padding hanging outside it.
+pub(super) fn draw_piece_icon(skin: &ClaySkin, name: &str, icon_at: Rect, alpha: f32) {
+    if let (Some(texture), Some(meta)) = (skin.pieces.get(name), skin.manifest.pieces.get(name)) {
+        let room = meta.pad / skin.manifest.scale * icon_at.w / 48.0;
+        draw_icon(
+            texture,
+            Rect::new(
+                icon_at.x - room,
+                icon_at.y - room,
+                icon_at.w + 2.0 * room,
+                icon_at.w + 2.0 * room,
+            ),
+            alpha,
+        );
+    }
+}
+
 fn draw_row(skin: &ClaySkin, row: &ShopRow, rect: Rect, selected: bool) {
     let ink = rgb(skin.palette.ink, 1.0);
     let umber = rgb(skin.palette.umber, 1.0);
@@ -68,22 +85,7 @@ fn draw_row(skin: &ClaySkin, row: &ShopRow, rect: Rect, selected: bool) {
     let side = rect.h - 14.0;
     let icon_at = Rect::new(rect.x + 14.0, rect.y + 7.0, side, side);
     if row.is_tool {
-        if let (Some(texture), Some(meta)) = (
-            skin.pieces.get(&row.icon),
-            skin.manifest.pieces.get(&row.icon),
-        ) {
-            let room = meta.pad / skin.manifest.scale * side / 48.0;
-            draw_icon(
-                texture,
-                Rect::new(
-                    icon_at.x - room,
-                    icon_at.y - room,
-                    side + 2.0 * room,
-                    side + 2.0 * room,
-                ),
-                1.0,
-            );
-        }
+        draw_piece_icon(skin, &row.icon, icon_at, 1.0);
     } else if let Some(texture) = skin.items.get(&row.icon) {
         draw_icon(texture, icon_at, 1.0);
     }
@@ -172,19 +174,6 @@ pub(crate) fn draw_shop(skin: &ClaySkin, frame: &ShopFrame, layout: &ShopLayout)
         30.0,
         cream,
     );
-    if let Some(message) = &frame.message {
-        let size = 24.0;
-        let (w, h) = (text_width(skin, message, size) + 44.0, 52.0);
-        let above = layout.panel.y >= h + 24.0;
-        let y = if above {
-            layout.panel.y - h - 12.0
-        } else {
-            layout.panel.y + layout.panel.h + 12.0
-        };
-        let shape = Rect::new(layout.panel.x + (layout.panel.w - w) / 2.0, y, w, h);
-        draw_piece(skin, "bubble", shape, 1.0);
-        centred(skin, message, shape, size, ink, ink);
-    }
 }
 
 /// The icon floating over the market in reach, bobbing and pulsing; far markets show none.

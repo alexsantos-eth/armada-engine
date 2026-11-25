@@ -93,6 +93,20 @@
       "pad": 24,
       "slice": 44
     },
+    "toast": {
+      "file": "ui/toast.png",
+      "width": 448,
+      "height": 164,
+      "pad": 24,
+      "slice": 44
+    },
+    "toast_warning": {
+      "file": "ui/toast_warning.png",
+      "width": 448,
+      "height": 164,
+      "pad": 24,
+      "slice": 44
+    },
     "coin": {
       "file": "ui/coin.png",
       "width": 116,

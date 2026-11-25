@@ -351,7 +351,7 @@ impl Game {
             (input_service.poll(), Vec::new())
         };
         let mut input = input;
-        self.update_shop(&mut input, frame_ms);
+        self.update_shop(&mut input);
         self.player.walk = input.walk;
         set_player_run(&mut self.player, input.run);
         if input.jetpack_pressed {
