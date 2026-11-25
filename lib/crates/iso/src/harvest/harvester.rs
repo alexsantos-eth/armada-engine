@@ -6,7 +6,7 @@ use crate::inventory::Carried;
 use crate::items::{HarvestYield, ItemCatalog, ToolKind, tool_speed_tenths};
 
 /// Fixed ticks of one feedback cycle: wind up, strike, follow through.
-pub const HARVEST_STRIKE_TICKS: u32 = 5;
+pub const HARVEST_STRIKE_TICKS: u32 = 6;
 /// Tick of the swing on which the blow lands; the gather sheet's strike pose matches it.
 pub const HARVEST_STRIKE_AT: u32 = 3;
 

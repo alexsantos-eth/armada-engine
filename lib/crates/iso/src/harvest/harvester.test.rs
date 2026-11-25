@@ -204,12 +204,12 @@ fn blows_land_on_the_beat_of_the_swing() {
     step(&mut harvester, true, Some(&tree), &carried, 1);
     assert_eq!(harvester.strikes(), 1);
     assert_eq!(harvester.swing(), HARVEST_STRIKE_AT);
-    step(&mut harvester, true, Some(&tree), &carried, 4);
+    step(&mut harvester, true, Some(&tree), &carried, 5);
     assert_eq!(harvester.strikes(), 1);
     assert!(matches!(
         step(&mut harvester, true, Some(&tree), &carried, 1),
         HarvestStatus::Working {
-            progress: 80,
+            progress: 90,
             total: 400,
             ..
         }

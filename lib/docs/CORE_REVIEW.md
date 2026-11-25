@@ -234,3 +234,5 @@ Revisión 2026-11-24 (foco: recogida y HUD), Media, corregido. El HUD usaba el i
 Revisión 2026-11-25 (cadencia de recolección, `crates/iso/src/harvest/harvester.rs`). El ciclo de animación y sonido pasa a cinco ticks y la pose de impacto sigue en el 60 % del ciclo. Las pruebas cubren la cadencia y el tick de finalización del trabajo. La vista y el audio consumen el mismo evento de impacto. La revisión no encontró hallazgos nuevos.
 
 Revisión 2026-11-25 (botín de recolección, `crates/iso/src/drops/ground.rs`). La caída genera un objeto por unidad con posiciones deterministas e ids propios. La recogida suma por ítem y por slot para conservar los avisos y el destino de los depósitos. Las pruebas cubren cantidades mixtas, inventario lleno y montones de guardados anteriores. La revisión del dominio no encontró hallazgos adicionales.
+
+Revisión 2026-11-25 (ajuste de cadencia, `crates/iso/src/harvest/harvester.rs`). El ciclo de recolección dura seis ticks y el impacto se emite en el tercero. La prueba comprueba golpes en los ticks 3 y 9 y que el progreso sigue avanzando con el tiempo de trabajo.
