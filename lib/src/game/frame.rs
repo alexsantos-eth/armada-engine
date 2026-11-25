@@ -285,7 +285,7 @@ impl Game {
         if !collected.gained.is_empty() {
             self.audio.play(SoundEvent::ItemCollect);
             self.haptic.pulse();
-            self.pending_gains.extend(collected.gained.iter().cloned());
+            self.pending_gains.extend(collected.stacks);
             self.gain_note = Some((
                 crate::harvest::hotbar::gain_text(&collected.gained, &self.items),
                 crate::harvest::hotbar::GAIN_NOTE_MS,

@@ -155,7 +155,7 @@ pub(crate) struct Game {
     /// The note of the last harvest and how long it stays up, in milliseconds.
     pub(crate) gain_note: Option<(String, f64)>,
     /// What the player picked up since the last frame was drawn, for the HUD's flights.
-    pub(crate) pending_gains: Vec<iso::items::HarvestYield>,
+    pub(crate) pending_gains: Vec<iso::drops::StackGain>,
     /// The exported UI kit the HUD draws with; `None` when `content/ui/` cannot be loaded (the
     /// plain hotbar draws instead).
     pub(crate) clay_skin: Option<crate::ui::ClaySkin>,

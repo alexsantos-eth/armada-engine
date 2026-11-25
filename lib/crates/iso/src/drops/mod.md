@@ -14,15 +14,15 @@ Los montones no viven en los chunks ni en el catálogo de entidades: no se gener
 
 #### Funciones y métodos
 
-- [`Drops::list`](ground.rs#L72) — Los montones, del más viejo al más nuevo.
+- [`Drops::list`](ground.rs#L81) — Los montones, del más viejo al más nuevo.
   - Firma: `pub fn list(&self) -> &[Drop] {`
-- [`Drops::spawn`](ground.rs#L78) — Deja un montón por rendimiento alrededor del ancla de lo derribado.
+- [`Drops::spawn`](ground.rs#L87) — Deja un montón por rendimiento alrededor del ancla de lo derribado.
   - Firma: `pub fn spawn(&mut self, felled: Felled<'_>, yields: &[HarvestYield]) {`
-- [`Drops::collect`](ground.rs#L109) — Deja pasar `ticks` y recoge en el inventario los montones al alcance de los pies que ya no esperan, tanto de cada uno como quepa.
+- [`Drops::collect`](ground.rs#L118) — Deja pasar `ticks` y recoge en el inventario los montones al alcance de los pies que ya no esperan, tanto de cada uno como quepa.
   - Firma: `pub fn collect( &mut self, feet: Feet, inventory: &mut Inventory, items: &ItemCatalog, ticks: u32, ) -> Collected {`
-- [`with_drops`](ground.rs#L156) — `systems` con la parte de los montones escrita; las demás partes quedan como estaban.
+- [`with_drops`](ground.rs#L171) — `systems` con la parte de los montones escrita; las demás partes quedan como estaban.
   - Firma: `pub fn with_drops(mut systems: serde_json::Value, drops: &Drops) -> serde_json::Value {`
-- [`saved_drops`](ground.rs#L172) — Los montones que registra el guardado, o `None` si es anterior a la parte o de otra versión.
+- [`saved_drops`](ground.rs#L187) — Los montones que registra el guardado, o `None` si es anterior a la parte o de otra versión.
   - Firma: `pub fn saved_drops(systems: &serde_json::Value, items: &ItemCatalog) -> Option<Drops> {`
 
 #### Constantes
@@ -41,5 +41,6 @@ Los montones no viven en los chunks ni en el catálogo de entidades: no se gener
 
 - [`Drop`](ground.rs#L31) — Un montón de un item en el suelo: id, item, cantidad, dónde está, en qué bloque, de dónde salió y cuántos ticks le quedan de espera.
 - [`Felled`](ground.rs#L49) — Lo derribado, tal como lo necesita la caída: id de instancia, ancla y bloque.
-- [`Collected`](ground.rs#L58) — Lo que tomó una recogida y si algo al alcance no cupo.
-- [`Drops`](ground.rs#L65) — Todos los montones del suelo.
+- [`StackGain`](ground.rs#L58) — El slot de destino, el ítem y las unidades depositadas durante la recogida de un montón.
+- [`Collected`](ground.rs#L66) — Los totales recogidos por montón, los depósitos por slot y si algo al alcance quedó fuera.
+- [`Drops`](ground.rs#L74) — Todos los montones del suelo.

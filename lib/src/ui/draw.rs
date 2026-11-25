@@ -156,7 +156,7 @@ fn draw_slots(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, layout: &HudLayou
                     Rect::new(pivot.0 - side / 2.0, pivot.1 - side / 2.0 - 4.0, side, side);
                 draw_icon(icon, icon_rect, 1.0);
             }
-            let count = hud.shown_count(&stack.item, stack.count);
+            let count = hud.shown_count(index, stack.count);
             if count > 1 {
                 let text = count.to_string();
                 let size = rect.w * 0.34;

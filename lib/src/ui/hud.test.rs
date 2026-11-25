@@ -26,6 +26,7 @@ fn frame() -> UiFrame {
 
 fn gain(amount: u32) -> UiGain {
     UiGain {
+        slot: 1,
         item: "wood".into(),
         name: "Madera".into(),
         amount,
@@ -47,20 +48,29 @@ fn a_gain_starts_a_flight_to_its_slot() {
 fn a_count_in_the_air_is_not_in_its_slot_until_it_lands() {
     let mut hud = ClayHud::default();
     hud.apply(&frame(), &[gain(3)], (800.0, 600.0));
-    assert_eq!(hud.shown_count("wood", 6), 3);
+    assert_eq!(hud.shown_count(1, 6), 3);
     hud.advance(motion::FLY_MS + 1.0);
-    assert_eq!(hud.shown_count("wood", 6), 6);
+    assert_eq!(hud.shown_count(1, 6), 6);
     assert!(hud.flights.is_empty());
     assert!(hud.bump_age(1).is_some());
 }
 
 #[test]
-fn a_new_item_flies_to_the_first_empty_slot() {
+fn overlapping_flights_update_their_slots_when_each_lands() {
     let mut hud = ClayHud::default();
-    let mut stone = gain(2);
-    stone.item = "stone".into();
-    hud.apply(&frame(), &[stone], (800.0, 600.0));
-    assert_eq!(hud.flights[0].slot, 0);
+    let mut overflow = gain(2);
+    overflow.slot = 2;
+    let size = (800.0, 600.0);
+    hud.apply(&frame(), &[gain(3), overflow], size);
+    hud.advance(motion::FLY_MS / 2.0);
+    hud.apply(&frame(), &[UiGain { slot: 2, ..gain(1) }], size);
+    assert_eq!(hud.shown_count(1, 6), 3);
+    assert_eq!(hud.shown_count(2, 3), 0);
+    hud.advance(motion::FLY_MS / 2.0);
+    assert_eq!(hud.shown_count(1, 6), 6);
+    assert_eq!(hud.shown_count(2, 3), 2);
+    hud.advance(motion::FLY_MS / 2.0);
+    assert_eq!(hud.shown_count(2, 3), 3);
 }
 
 #[test]

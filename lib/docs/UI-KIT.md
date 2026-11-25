@@ -93,10 +93,10 @@ soltar el dedo.
 
 Cada fotograma `harvest::hud_frame` arma un `UiFrame` (slots con id, nombre y cantidad; aviso con
 verbo y herramienta, progreso y si está bloqueado; nota de inventario lleno) y un `UiGain` por
-cada recogida, con el pecho del jugador como fracción de la pantalla (`Game::player_chest`,
-`hud_frame::screen_share`): de ahí sale el globo `+3 Madera` y de ahí vuela el número hasta el
-slot. Mientras un número está en el aire el slot sigue mostrando la cantidad anterior; al aterrizar
-se actualiza y rebota. El verbo y la herramienta salen de la regla de recolección
+cada slot que recibe unidades de una recogida. El número sale del pecho del jugador
+(`Game::player_chest`, `hud_frame::screen_share`) y vuela hasta el slot de destino o la mochila
+táctil. Cada slot descuenta solo sus propias unidades en vuelo. Cuando aterrizan, se actualiza
+su cantidad y rebota. El verbo y la herramienta salen de la regla de recolección
 (`hacha → Talar`, `pico → Picar`, `red → Atrapar`, a mano → `Recoger`). `ClayHud` anima y
 `draw_clay_hud` pinta. El botón de acción se maneja con ratón o toque (`action_pressed` en el
 bucle) y se suma a `E` por `MacroquadInput::action_held`. Con los controles táctiles en pantalla

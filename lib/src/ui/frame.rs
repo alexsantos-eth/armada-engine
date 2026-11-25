@@ -33,9 +33,10 @@ pub(crate) struct UiFrame {
     pub(crate) note: Option<String>,
 }
 
-/// One pick-up: what and how much, and where it starts its flight, as shares of the screen.
+/// The units picked up into one slot, with their flight origin as shares of the screen.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct UiGain {
+    pub(crate) slot: usize,
     pub(crate) item: String,
     pub(crate) name: String,
     pub(crate) amount: u32,

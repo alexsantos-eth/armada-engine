@@ -73,21 +73,36 @@ impl Inventory {
     /// Puts up to `amount` units of `item` away, topping up its stacks before opening empty
     /// slots, and returns the units that did not fit. An item the catalog lacks never fits.
     pub fn add(&mut self, item: &str, amount: u32, items: &ItemCatalog) -> u32 {
+        self.add_with_slots(item, amount, items, |_, _| {})
+    }
+
+    /// Like [Self::add], reporting each slot and the number of units that went into it.
+    pub(crate) fn add_with_slots(
+        &mut self,
+        item: &str,
+        amount: u32,
+        items: &ItemCatalog,
+        mut placed: impl FnMut(usize, u32),
+    ) -> u32 {
         let Some(limit) = items.item(item).map(|def| def.stack) else {
             return amount;
         };
         let mut left = amount;
-        for stack in self.slots.iter_mut().flatten() {
+        for (slot, stack) in self.slots.iter_mut().enumerate() {
             if left == 0 {
                 break;
             }
-            if stack.item == item {
-                let moved = left.min(limit.saturating_sub(stack.count));
+            if let Some(stack) = stack
+                && stack.item == item
+                && stack.count < limit
+            {
+                let moved = left.min(limit - stack.count);
                 stack.count += moved;
                 left -= moved;
+                placed(slot, moved);
             }
         }
-        for slot in &mut self.slots {
+        for (index, slot) in self.slots.iter_mut().enumerate() {
             if left == 0 {
                 break;
             }
@@ -98,6 +113,7 @@ impl Inventory {
                     count: moved,
                 });
                 left -= moved;
+                placed(index, moved);
             }
         }
         left

@@ -3,9 +3,10 @@
 //! Pure; tested in `hud_frame.test.rs`.
 
 use crate::ui::{UiAction, UiFrame, UiGain, UiStack};
+use iso::drops::StackGain;
 use iso::harvest::{HarvestStatus, HarvestTarget};
 use iso::inventory::Carried;
-use iso::items::{HarvestYield, ItemCatalog, ToolKind};
+use iso::items::{ItemCatalog, ToolKind};
 
 /// The tool and the verb of holding a blueprint's harvest.
 fn action_of(blueprint: &str, items: &ItemCatalog) -> UiAction {
@@ -93,11 +94,12 @@ fn item_name(item: &str, items: &ItemCatalog) -> String {
         .map_or_else(|| item.to_owned(), |def| def.name.clone())
 }
 
-/// One flying gain per yield picked up, starting at `at` (shares of the screen).
-pub(crate) fn gains(yields: &[HarvestYield], items: &ItemCatalog, at: (f32, f32)) -> Vec<UiGain> {
-    yields
+/// One flying gain per slot deposit, starting at `at` (shares of the screen).
+pub(crate) fn gains(stacks: &[StackGain], items: &ItemCatalog, at: (f32, f32)) -> Vec<UiGain> {
+    stacks
         .iter()
         .map(|y| UiGain {
+            slot: y.slot,
             item: y.item.clone(),
             name: item_name(&y.item, items),
             amount: y.amount,
