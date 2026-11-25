@@ -110,6 +110,34 @@ impl SceneEdit {
     }
 }
 
+/// What a scripted player does at a merchant's shop.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SceneTrade {
+    /// Opens the shop of the merchant in reach.
+    Open,
+    /// Goes to the tab of what the player sells.
+    Sell,
+    /// Goes to the tab of the tools on the shelf.
+    Buy,
+    /// Moves the cursor one row up.
+    Up,
+    /// Moves the cursor one row down.
+    Down,
+    /// Trades the row under the cursor.
+    Confirm,
+    /// Closes the shop.
+    Close,
+}
+
+/// Units of an item the scripted player starts out carrying.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SceneCarry {
+    pub item: String,
+    pub amount: u32,
+}
+
 /// One step of a run, in the order the scene lists them.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase", deny_unknown_fields)]
@@ -138,6 +166,8 @@ pub enum SceneStep {
     Phase(ScenePhase),
     /// Changes the world mid-run, as the scene's own edits do at the start.
     Edit(SceneEdit),
+    /// Does something at a merchant's shop; the frame goes on with the next step.
+    Trade(SceneTrade),
     /// Writes the frame as a PNG under the run's output directory.
     Shot(String),
 }
@@ -197,6 +227,12 @@ pub struct Scene {
     /// The cell the player stands on before the first step.
     #[serde(default)]
     pub player: Option<[i32; 2]>,
+    /// What the player carries before the first step, on top of the starting tools.
+    #[serde(default)]
+    pub carry: Vec<SceneCarry>,
+    /// The coins the player has before the first step.
+    #[serde(default)]
+    pub wallet: u64,
     /// What is built before the first step.
     #[serde(default)]
     pub edits: Vec<SceneEdit>,

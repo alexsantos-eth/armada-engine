@@ -11,5 +11,8 @@ mod script;
 
 pub use apply::apply_edit;
 pub use report::{Report, ReportEntity, ReportPlayer, entities_in, player_of, refusal_note};
-pub use scene::{Scene, SceneEdit, ScenePhase, SceneStep, SceneWorld, is_shot_name, parse_scene};
+pub use scene::{
+    Scene, SceneCarry, SceneEdit, ScenePhase, SceneStep, SceneTrade, SceneWorld, is_shot_name,
+    parse_scene,
+};
 pub use script::{Script, ScriptFrame};

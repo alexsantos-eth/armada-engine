@@ -96,6 +96,18 @@
       "name": "Pico de cobre",
       "kind": "pickaxe",
       "tier": 3
+    },
+    {
+      "id": "vine_trap",
+      "name": "Trampa de bejuco",
+      "kind": "net",
+      "tier": 2
+    },
+    {
+      "id": "copper_hook",
+      "name": "Anzuelo de cobre",
+      "kind": "net",
+      "tier": 3
     }
   ],
   "startingTools": [

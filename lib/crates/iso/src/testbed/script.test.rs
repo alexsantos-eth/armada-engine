@@ -1,6 +1,6 @@
 use super::*;
 use crate::projection::GridPoint;
-use crate::testbed::scene::{ScenePhase, SceneStep};
+use crate::testbed::scene::{ScenePhase, SceneStep, SceneTrade};
 
 /// A run of `steps` with room to spare.
 fn script(steps: Vec<SceneStep>) -> Script {
@@ -207,4 +207,18 @@ fn a_shot_right_after_a_gather_keeps_the_key_held() {
     assert!(shot.input.gather_held);
     assert!(!run.frame(true).input.gather_held);
     assert!(!run.frame(true).input.gather_held);
+}
+
+#[test]
+fn shop_steps_ride_along_with_the_frame_that_takes_the_next_step() {
+    let mut run = script(vec![
+        SceneStep::Trade(SceneTrade::Open),
+        SceneStep::Trade(SceneTrade::Buy),
+        SceneStep::Shot("shop.png".to_owned()),
+    ]);
+
+    let frame = run.frame(true);
+    assert_eq!(frame.trade, [SceneTrade::Open, SceneTrade::Buy]);
+    assert_eq!(frame.shots, ["shop.png"]);
+    assert!(run.frame(true).done);
 }

@@ -8,6 +8,7 @@ pub mod biomes;
 pub mod camera;
 pub mod det_math;
 pub mod drops;
+pub mod economy;
 pub mod entities;
 pub mod grid;
 pub mod harvest;

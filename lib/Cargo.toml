@@ -1,6 +1,6 @@
 [package]
 name = "iso-core"
-version = "0.37.9"
+version = "0.38.1"
 edition = "2024"
 default-run = "iso-core"
 autobins = false
