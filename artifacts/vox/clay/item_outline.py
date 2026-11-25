@@ -9,7 +9,7 @@
 # vox_items.py --render calls it after every render. It is idempotent: an outlined PNG carries a
 # text chunk and is skipped, so running it twice never thickens the line. The sprites are drawn
 # small in the middle of a 1024 x 853 canvas and shrunk about three times when the atlas is
-# built, so the line is OUTLINE_PX of the source: about two pixels in the atlas.
+# built, so the line is OUTLINE_PX of the source: about three pixels in the atlas.
 import math
 import os
 import sys
@@ -18,8 +18,8 @@ import numpy as np
 from PIL import Image, ImageFilter, PngImagePlugin
 
 INK = (0x1A, 0x12, 0x0D)  # --ac-ink
-OUTLINE_PX = 7.0  # the line's width in the 1024-wide source
-WOBBLE_PX = 1.6  # how far the line strays from a true offset curve
+OUTLINE_PX = 11.0 # the line's width in the 1024-wide source
+WOBBLE_PX = 2.2  # how far the line strays from a true offset curve
 WOBBLE_CELL = 26  # the size of one wobble, in source pixels
 MARKER = "armada-outline"
 
