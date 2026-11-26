@@ -7,15 +7,13 @@
 #   0 lifts the tool   1 overhead   2 cocked behind the head   3 coming down fast
 #   4 IMPACT           5 follows through   6, 7 straighten up for the next blow
 #
-# The sheet only poses the figure (this module is the pose source, read by player_rig_poses.py);
-# the tool is a separate mesh the rig renderer (player_rig.py) puts in the right hand. Each cell
-# therefore also says where the tool points (`tool_dir`, in the figure's frame, x forward and z
-# up), and the right hand is turned half way from the arm to it so the fist wraps the handle.
-# One sheet per tool, `chop_<tool id>`, all with these poses; the feet stay where they stand,
-# so the engine draws it with the walk sheet's cell, like the gather sheet.
+# The sheet only poses the figure (player_model.py draws it, through poses_of in player_render.py);
+# the tool is a separate mesh player_model.py holds in the right hand, pointing where `tool_dir`
+# says for each column (in the figure's frame, x forward and z up). One sheet per tool,
+# `chop_<tool id>`, all with these poses; the feet stay where they stand, so the engine draws it
+# with the walk sheet's cell, like the gather sheet.
 #
-#   python3 player_rig_poses.py chop        -> player_rig/poses.json gets the chop poses
-#   python3 player_rig.py chop_flint_axe    -> lib/painted/player-16_chop_flint_axe.png
+#   python3 player_model.py chop_flint_axe  -> lib/painted/player-16_chop_flint_axe.png
 #
 # Requires shapely (see iso_lib.py).
 import math
