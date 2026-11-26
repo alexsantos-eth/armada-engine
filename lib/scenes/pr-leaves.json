@@ -1,0 +1,93 @@
+{
+  "world": "procedural",
+  "window": [
+    1280,
+    800
+  ],
+  "zoom": 2.2,
+  "phase": "day",
+  "centre": [
+    -12,
+    142
+  ],
+  "player": [
+    -12,
+    142
+  ],
+  "edits": [
+    {
+      "surface": {
+        "at": [
+          -9,
+          142
+        ],
+        "material": "grass"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          -9,
+          142
+        ],
+        "blueprint": "bush"
+      }
+    }
+  ],
+  "steps": [
+    "settle",
+    {
+      "shot": "leaves-0-bush.png"
+    },
+    {
+      "gather": {
+        "frames": 40
+      }
+    },
+    {
+      "wait": {
+        "frames": 6
+      }
+    },
+    {
+      "shot": "leaves-1-burst.png"
+    },
+    {
+      "teleport": [
+        -10,
+        143
+      ]
+    },
+    {
+      "wait": {
+        "frames": 18
+      }
+    },
+    "settle",
+    {
+      "shot": "leaves-2-picked.png"
+    },
+    {
+      "pack": "open"
+    },
+    {
+      "shot": "leaves-3-backpack.png"
+    }
+  ],
+  "out": "shots-leaves",
+  "maxFrames": 1600,
+  "carry": [
+    {
+      "item": "leaf",
+      "amount": 7
+    },
+    {
+      "item": "fiber",
+      "amount": 3
+    },
+    {
+      "item": "wood",
+      "amount": 4
+    }
+  ]
+}
