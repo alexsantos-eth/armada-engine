@@ -10,6 +10,7 @@ use macroquad::prelude::{Touch, TouchPhase};
 use super::frame::{UiFrame, UiGain};
 use super::layout::HudLayout;
 use super::motion;
+use super::pack::{PackHit, PackLayout, PackTab};
 
 /// What the warning bubble says.
 #[derive(Clone, Debug, PartialEq)]
@@ -62,29 +63,59 @@ pub(crate) struct ClayHud {
     pub(crate) held: bool,
     /// Whether the backpack has unfolded the mobile inventory.
     pub(crate) inventory_open: bool,
+    /// The list the mobile inventory is showing.
+    pub(crate) pack_tab: PackTab,
 }
 
 impl ClayHud {
-    /// Toggles the panel once for a new press on the backpack and returns its sound.
-    pub(crate) fn update_inventory(
-        &mut self,
-        layout: &HudLayout,
-        touches: &[Touch],
-    ) -> Option<SoundEvent> {
-        let pressed = touches.iter().any(|touch| {
-            touch.phase == TouchPhase::Started
-                && layout.backpack_hit(touch.position.x, touch.position.y)
-        });
-        if !pressed {
-            return None;
-        }
-
+    /// Opens or closes the inventory panel from its key and returns the sound.
+    pub(crate) fn toggle_inventory(&mut self) -> SoundEvent {
         self.inventory_open = !self.inventory_open;
-        Some(if self.inventory_open {
+        if self.inventory_open {
+            self.pack_tab = PackTab::Items;
             SoundEvent::InventoryOpen
         } else {
             SoundEvent::InventoryClose
-        })
+        }
+    }
+
+    /// Closes the panel if it is open (Escape) and returns the sound.
+    pub(crate) fn close_inventory(&mut self) -> Option<SoundEvent> {
+        std::mem::take(&mut self.inventory_open).then_some(SoundEvent::InventoryClose)
+    }
+
+    /// Drives the mobile inventory with the new presses of this frame and returns the sound of
+    /// opening or closing it: a press on the backpack opens the panel; once open, a press on a
+    /// tab shows its list, and one on the close button (or outside the panel) closes it.
+    pub(crate) fn update_inventory(
+        &mut self,
+        layout: &HudLayout,
+        pack: &PackLayout,
+        touches: &[Touch],
+    ) -> Option<SoundEvent> {
+        for touch in touches
+            .iter()
+            .filter(|touch| touch.phase == TouchPhase::Started)
+        {
+            let (x, y) = (touch.position.x, touch.position.y);
+            if !self.inventory_open {
+                if layout.backpack_hit(x, y) {
+                    self.inventory_open = true;
+                    self.pack_tab = PackTab::Items;
+                    return Some(SoundEvent::InventoryOpen);
+                }
+                continue;
+            }
+            match pack.hit(x, y) {
+                PackHit::Tab(tab) => self.pack_tab = tab,
+                PackHit::Close | PackHit::Outside => {
+                    self.inventory_open = false;
+                    return Some(SoundEvent::InventoryClose);
+                }
+                PackHit::Panel => {}
+            }
+        }
+        None
     }
 
     /// Takes this frame's HUD state and pick-ups on a screen of `size`: each gain starts a

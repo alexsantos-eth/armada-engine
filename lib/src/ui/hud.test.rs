@@ -1,7 +1,7 @@
 //! Tests for the native HUD's animation state: flights, bumps and counts in the air.
 
 use super::*;
-use crate::ui::{HudLayout, UiFrame, UiGain, UiStack};
+use crate::ui::{HudLayout, PackTab, UiFrame, UiGain, UiStack};
 
 fn frame() -> UiFrame {
     UiFrame {
@@ -16,6 +16,7 @@ fn frame() -> UiFrame {
             }),
             None,
         ],
+        tools: Vec::new(),
         progress: None,
         progress_at: None,
         progress_name: None,
@@ -74,15 +75,32 @@ fn overlapping_flights_update_their_slots_when_each_lands() {
 }
 
 #[test]
-fn a_flight_on_a_desktop_lands_on_its_slot() {
+fn a_flight_on_a_desktop_lands_on_the_backpack_icon_too() {
     let mut hud = ClayHud::default();
     let desktop = HudLayout::new(1280.0, 800.0, 4, false);
     hud.apply(&frame(), &[gain(3)], (1280.0, 800.0));
-    let slot = desktop.slots[1];
+    let backpack = desktop.backpack.unwrap();
     assert_eq!(
         hud.flights[0].destination(&desktop),
-        Some((slot.x + slot.w / 2.0, slot.y + slot.h / 2.0))
+        Some((backpack.x + backpack.w / 2.0, backpack.y + backpack.h / 2.0))
     );
+}
+
+#[test]
+fn the_inventory_key_toggles_the_panel_and_escape_closes_it() {
+    use iso::services::SoundEvent;
+    let mut hud = ClayHud::default();
+    assert_eq!(hud.close_inventory(), None);
+    assert_eq!(hud.toggle_inventory(), SoundEvent::InventoryOpen);
+    assert!(hud.inventory_open);
+    hud.pack_tab = PackTab::Tools;
+    assert_eq!(hud.toggle_inventory(), SoundEvent::InventoryClose);
+    assert!(!hud.inventory_open);
+    // Opening again starts on the items tab.
+    hud.toggle_inventory();
+    assert_eq!(hud.pack_tab, PackTab::Items);
+    assert_eq!(hud.close_inventory(), Some(SoundEvent::InventoryClose));
+    assert!(!hud.inventory_open);
 }
 
 #[test]
@@ -129,6 +147,7 @@ fn the_backpack_toggles_once_per_new_press_and_emits_the_matching_sound() {
     let mut hud = ClayHud::default();
     let mobile = HudLayout::new(800.0, 400.0, 6, true);
     let desktop = HudLayout::new(800.0, 400.0, 6, false);
+    let pack = crate::ui::PackLayout::new(800.0, 400.0, 6, 2);
     let backpack = mobile.backpack.unwrap().center();
     let touch = |id, phase, position| Touch {
         id,
@@ -138,19 +157,27 @@ fn the_backpack_toggles_once_per_new_press_and_emits_the_matching_sound() {
     let press = touch(1, TouchPhase::Started, backpack);
 
     assert!(!hud.inventory_open);
+    // The backpack icon opens the panel on a desktop too, when it is pressed.
+    let desktop_press = touch(9, TouchPhase::Started, desktop.backpack.unwrap().center());
     assert_eq!(
-        hud.update_inventory(&desktop, std::slice::from_ref(&press)),
-        None
+        hud.update_inventory(&desktop, &pack, std::slice::from_ref(&desktop_press)),
+        Some(SoundEvent::InventoryOpen)
     );
+    assert!(hud.close_inventory().is_some());
     assert_eq!(
         hud.update_inventory(
             &mobile,
+            &pack,
             &[touch(1, TouchPhase::Started, vec2(200.0, 200.0))]
         ),
         None
     );
     assert_eq!(
-        hud.update_inventory(&mobile, &[press, touch(2, TouchPhase::Started, backpack)]),
+        hud.update_inventory(
+            &mobile,
+            &pack,
+            &[press, touch(2, TouchPhase::Started, backpack)]
+        ),
         Some(SoundEvent::InventoryOpen)
     );
 
@@ -161,16 +188,16 @@ fn the_backpack_toggles_once_per_new_press_and_emits_the_matching_sound() {
         TouchPhase::Cancelled,
     ] {
         assert_eq!(
-            hud.update_inventory(&mobile, &[touch(1, phase, backpack)]),
+            hud.update_inventory(&mobile, &pack, &[touch(1, phase, backpack)]),
             None
         );
         assert!(hud.inventory_open);
     }
-    assert_eq!(hud.update_inventory(&mobile, &[]), None);
+    assert_eq!(hud.update_inventory(&mobile, &pack, &[]), None);
     assert!(hud.inventory_open);
 
     assert_eq!(
-        hud.update_inventory(&mobile, &[touch(3, TouchPhase::Started, backpack)]),
+        hud.update_inventory(&mobile, &pack, &[touch(3, TouchPhase::Started, backpack)]),
         Some(SoundEvent::InventoryClose)
     );
     assert!(!hud.inventory_open);

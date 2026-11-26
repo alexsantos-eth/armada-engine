@@ -6,7 +6,7 @@
 
 use crate::lighting::BakePhase;
 use crate::services::NormalizedInput;
-use crate::testbed::scene::{SceneEdit, SceneStep, SceneTrade};
+use crate::testbed::scene::{SceneEdit, ScenePack, SceneStep, SceneTrade};
 
 /// What one scripted frame does, for the client to carry out.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -21,6 +21,8 @@ pub struct ScriptFrame {
     pub edits: Vec<SceneEdit>,
     /// What the player does at a merchant's shop this frame, in order.
     pub trade: Vec<SceneTrade>,
+    /// What the player does with the mobile inventory panel this frame, in order.
+    pub pack: Vec<ScenePack>,
     /// The shots written after this frame is drawn.
     pub shots: Vec<String>,
     /// Whether the run is over: every step was taken, or the frame budget ran out.
@@ -123,6 +125,10 @@ impl Script {
                 }
                 SceneStep::Trade(step) => {
                     frame.trade.push(step);
+                    self.at += 1;
+                }
+                SceneStep::Pack(step) => {
+                    frame.pack.push(step);
                     self.at += 1;
                 }
                 SceneStep::Settle => {

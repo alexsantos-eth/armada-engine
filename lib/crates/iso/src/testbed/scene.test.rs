@@ -243,3 +243,18 @@ fn a_scene_can_carry_items_hold_coins_and_visit_the_shop() {
     assert!(!SceneStep::Trade(SceneTrade::Close).ends_the_frame());
     assert!(parse_scene(r#"{ "steps": [{ "trade": "haggle" }] }"#).is_err());
 }
+
+#[test]
+fn a_scene_can_hold_a_phone_and_open_its_inventory_panel() {
+    use crate::testbed::scene::ScenePack;
+    let scene = parse_scene(
+        r#"{ "touch": true, "steps": [{ "pack": "open" }, { "pack": "tools" }, { "shot": "a.png" }] }"#,
+    )
+    .unwrap();
+    assert!(scene.touch);
+    assert_eq!(scene.steps[0], SceneStep::Pack(ScenePack::Open));
+    assert_eq!(scene.steps[1], SceneStep::Pack(ScenePack::Tools));
+    assert!(!SceneStep::Pack(ScenePack::Close).ends_the_frame());
+    assert!(!parse_scene("{}").unwrap().touch);
+    assert!(parse_scene(r#"{ "steps": [{ "pack": "shake" }] }"#).is_err());
+}

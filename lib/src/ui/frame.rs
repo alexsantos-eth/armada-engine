@@ -16,12 +16,25 @@ pub(crate) struct UiAction {
     pub(crate) verb: String,
 }
 
+/// One tool the player owns, as the mobile inventory lists it.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct UiTool {
+    /// The kit piece that draws it (`tool_axe`…).
+    pub(crate) piece: String,
+    pub(crate) name: String,
+    pub(crate) tier: u8,
+    /// How many of it are carried.
+    pub(crate) count: u32,
+}
+
 /// What the HUD shows this frame.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct UiFrame {
     pub(crate) visible: bool,
     pub(crate) touch: bool,
     pub(crate) slots: Vec<Option<UiStack>>,
+    /// The tools the player owns.
+    pub(crate) tools: Vec<UiTool>,
     /// The share of work done while the harvest is under way (0–1).
     pub(crate) progress: Option<f32>,
     /// The screen point above the player the progress sits at.

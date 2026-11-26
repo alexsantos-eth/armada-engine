@@ -55,6 +55,7 @@ la terminal cada captura que escribe y una línea de resumen al acabar.
 | `player` | La celda en la que aparece el jugador, con la cámara ya encuadrada. |
 | `carry` | Items con que empieza el jugador, `[{ "item": "wood", "amount": 14 }]`; para encuadrar una tienda con algo que vender. |
 | `wallet` | Las monedas con que empieza el jugador. |
+| `touch` | `true` enciende los controles táctiles, como en un móvil (el stick flotante en vez del botón de acción). |
 | `edits` | Lo que se construye antes del primer paso (ver abajo). |
 | `steps` | Los pasos de la corrida. Sin pasos: esperar la luz y tomar `scene.png`. |
 | `out` | Carpeta de salida, relativa al propio archivo de escena. Por defecto `shots`. |
@@ -95,6 +96,7 @@ la escena lo dice.
 { "edit": { "raise": { "at": [4, 4] } } }      // una edición a mitad de corrida
 { "trade": "open" }                            // la tienda del comerciante al alcance: "open", "sell",
                                                // "buy", "up", "down", "confirm" o "close"
+{ "pack": "open" }                             // el panel de la mochila: "open", "items", "tools", "close"
 { "shot": "nombre.png" }                       // escribe el fotograma
 ```
 

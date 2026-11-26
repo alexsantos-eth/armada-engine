@@ -24,11 +24,15 @@ fn the_best_tier_of_a_kind_wins() {
 }
 
 #[test]
-fn a_tool_is_carried_once_and_must_exist() {
+fn a_tool_must_exist_and_can_be_carried_more_than_once() {
     let mut belt = Toolbelt::starting(&items());
-    assert!(!belt.give("flint_axe", &items()));
     assert!(!belt.give("laser", &items()));
     assert_eq!(belt.tools().len(), 2);
+    assert!(belt.give("flint_axe", &items()));
+    assert_eq!(belt.count("flint_axe"), 2);
+    assert_eq!(belt.count("laser"), 0);
+    // The distinct tools keep their order, each with its count.
+    assert_eq!(belt.owned(), vec![("flint_axe", 2), ("stone_pickaxe", 1)]);
 }
 
 #[test]

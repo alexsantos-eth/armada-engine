@@ -26,7 +26,7 @@ enum Command {
 }
 
 /// The new presses of the pointer this frame: touches that began, or else a mouse click.
-fn pointer_taps() -> Vec<(f32, f32)> {
+pub(crate) fn pointer_taps() -> Vec<(f32, f32)> {
     let touched: Vec<(f32, f32)> = touches()
         .iter()
         .filter(|touch| touch.phase == TouchPhase::Started)
@@ -78,6 +78,12 @@ const fn scripted(step: SceneTrade) -> Command {
 }
 
 impl Game {
+    /// Whether a menu (the shop, or the mobile inventory panel) is open over the world: the
+    /// world blurs behind it and the player cannot act until it closes.
+    pub(crate) fn menu_open(&self) -> bool {
+        self.shop.is_some() || self.clay_hud.inventory_open
+    }
+
     fn shop_stock(&self) -> ShopStock<'_> {
         ShopStock {
             carried: &self.carried,
@@ -232,8 +238,8 @@ impl Game {
         } else {
             ToastIcon::Item(row.icon.clone())
         };
-        // What came of it goes up as a toast; a greyed-out row says nothing unless it has
-        // something to say ("Ya la tienes"), and one that only costs too much stays quiet.
+        // What came of it goes up as a toast; a greyed-out row that costs too much stays
+        // quiet unless it carries a note.
         let toast = if row.enabled {
             let result = crate::shop::trade(
                 row,
@@ -278,13 +284,11 @@ impl Game {
         })
     }
 
-    /// Paints the economy over the HUD: the icon over each market, the wallet and the shop.
+    /// Paints the economy over the HUD: the wallet and the shop (the market icons are painted
+    /// into the scene itself, see `loops::frame_loop`).
     /// The toasts go last, over everything.
     pub(crate) fn draw_economy(&self, skin: &ClaySkin) {
         let open = self.shop_frame();
-        if open.is_none() {
-            crate::ui::draw_market_marks(skin, &self.market_marks, self.clay_hud.clock_ms);
-        }
         if self.wallet.coins() > 0 || open.is_some() {
             crate::ui::draw_wallet(skin, self.wallet.coins());
         }

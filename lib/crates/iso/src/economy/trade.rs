@@ -45,8 +45,6 @@ pub enum TradeError {
     NothingToSell,
     /// The tool is not on today's shelf.
     NotOffered,
-    /// The tool is already in the belt.
-    AlreadyOwned,
     /// The wallet holds fewer coins than the price.
     TooPoor,
 }
@@ -73,7 +71,8 @@ pub fn sell_item(
     Ok(coins)
 }
 
-/// Buys `tool` off today's shelf into the belt and returns its price.
+/// Buys one `tool` off today's shelf into the belt and returns its price. A tool already owned
+/// can be bought again: the belt counts the units.
 pub fn buy_tool(
     toolbelt: &mut Toolbelt,
     wallet: &mut Wallet,
@@ -82,9 +81,6 @@ pub fn buy_tool(
     tool: &str,
 ) -> Result<u32, TradeError> {
     let offer = market.offer(tool).ok_or(TradeError::NotOffered)?;
-    if toolbelt.tools().iter().any(|owned| owned == tool) {
-        return Err(TradeError::AlreadyOwned);
-    }
     if wallet.coins() < u64::from(offer.coins) {
         return Err(TradeError::TooPoor);
     }

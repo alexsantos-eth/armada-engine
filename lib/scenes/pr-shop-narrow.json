@@ -1,0 +1,111 @@
+{
+  "world": "procedural",
+  "window": [
+    360,
+    740
+  ],
+  "zoom": 2.2,
+  "phase": "day",
+  "centre": [
+    -12,
+    142
+  ],
+  "player": [
+    -13,
+    142
+  ],
+  "carry": [
+    {
+      "item": "wood",
+      "amount": 14
+    },
+    {
+      "item": "stone",
+      "amount": 6
+    },
+    {
+      "item": "fiber",
+      "amount": 9
+    },
+    {
+      "item": "copper_ore",
+      "amount": 2
+    }
+  ],
+  "wallet": 900,
+  "edits": [
+    {
+      "surface": {
+        "at": [
+          -13,
+          141
+        ],
+        "material": "grass"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          -13,
+          141
+        ],
+        "blueprint": "market_stall"
+      }
+    }
+  ],
+  "steps": [
+    "settle",
+    {
+      "trade": "open"
+    },
+    {
+      "trade": "buy"
+    },
+    {
+      "shot": "shop-narrow-0-buy.png"
+    },
+    {
+      "trade": "confirm"
+    },
+    {
+      "wait": {
+        "frames": 20
+      }
+    },
+    {
+      "trade": "confirm"
+    },
+    {
+      "wait": {
+        "frames": 20
+      }
+    },
+    {
+      "shot": "shop-narrow-1-bought-twice.png"
+    },
+    {
+      "trade": "close"
+    },
+    {
+      "wait": {
+        "frames": 20
+      }
+    },
+    {
+      "pack": "open"
+    },
+    {
+      "pack": "tools"
+    },
+    {
+      "wait": {
+        "frames": 20
+      }
+    },
+    {
+      "shot": "shop-narrow-2-pack-tools.png"
+    }
+  ],
+  "touch": true,
+  "out": "shots-shop-narrow"
+}

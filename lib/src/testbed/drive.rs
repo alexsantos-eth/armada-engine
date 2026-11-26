@@ -46,6 +46,9 @@ pub(crate) fn begin(game: &mut Game, scene: &Scene, out: PathBuf) {
         }
     }
     game.wallet = iso::economy::Wallet::with(scene.wallet);
+    if scene.touch {
+        game.touch = crate::touch::TouchControls::new(true);
+    }
     println!(
         "scene: {} edit(s), {} step(s), shots to write: {}",
         scene.edits.len(),
@@ -82,6 +85,17 @@ fn carry_out(game: &mut Game, run: &mut ScriptRun, frame: &ScriptFrame) {
         place_player(game, at);
     }
     game.scripted_trade.extend(frame.trade.iter().copied());
+    for step in &frame.pack {
+        match step {
+            iso::testbed::ScenePack::Open => {
+                game.clay_hud.inventory_open = true;
+                game.clay_hud.pack_tab = crate::ui::PackTab::Items;
+            }
+            iso::testbed::ScenePack::Items => game.clay_hud.pack_tab = crate::ui::PackTab::Items,
+            iso::testbed::ScenePack::Tools => game.clay_hud.pack_tab = crate::ui::PackTab::Tools,
+            iso::testbed::ScenePack::Close => game.clay_hud.inventory_open = false,
+        }
+    }
 }
 
 /// What stands on a cell, by the blueprint it was built from.

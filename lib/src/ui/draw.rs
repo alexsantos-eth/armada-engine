@@ -99,6 +99,16 @@ pub(super) fn draw_icon(texture: &Texture2D, rect: Rect, alpha: f32) {
     );
 }
 
+/// The largest font size up to `size` at which `text` fits in `room` pixels, never below a
+/// readable minimum, so a long name shrinks instead of running under its neighbour.
+pub(super) fn fit_size(skin: &ClaySkin, text: &str, size: f32, room: f32) -> f32 {
+    let width = text_width(skin, text, size);
+    if width <= room || width <= 0.0 {
+        return size;
+    }
+    (size * room / width).floor().max(size * 0.6).max(10.0)
+}
+
 pub(super) fn text_width(skin: &ClaySkin, text: &str, size: f32) -> f32 {
     measure_text(text, Some(&skin.display), size as u16, 1.0).width
 }
@@ -443,19 +453,23 @@ pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, lay
     if let (Some(share), Some(at)) = (frame.progress, frame.progress_at) {
         draw_progress(skin, share, frame.progress_name.as_deref(), at);
     }
-    // On mobile the inventory stays folded until the backpack icon is tapped;
-    // on desktop it is always visible.
-    let show_slots = !frame.touch || hud.inventory_open;
-    if show_slots {
-        draw_piece(skin, "hotbar", layout.panel, 1.0);
-        draw_slots(skin, hud, frame, layout);
+    // The inventory stays folded in the backpack icon until it is pressed (or its key), and then
+    // opens as a panel in the middle of the screen, on every platform.
+    let pack_open = hud.inventory_open;
+    if pack_open {
+        super::pack_draw::draw_pack(skin, hud, frame, layout, |slots| {
+            draw_slots(skin, hud, frame, slots);
+        });
     }
-    if let Some(action) = frame.action.as_ref()
+    if !pack_open
+        && let Some(action) = frame.action.as_ref()
         && let Some(rect) = layout.action
     {
         draw_action(skin, hud, action, frame, rect);
     }
-    draw_backpack(skin, hud, layout);
+    if !pack_open {
+        draw_backpack(skin, hud, layout);
+    }
     draw_bubble(skin, hud, layout);
     draw_flights(skin, hud, layout);
 }

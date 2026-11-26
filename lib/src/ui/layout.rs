@@ -22,7 +22,7 @@ pub(crate) const SLOT_ASPECT: f32 = 1.06;
 const TOUCH_ROW_SLOT: (f32, f32) = (34.0, 44.0);
 /// The action button's side on a desktop.
 const ACTION_SIZE: f32 = 104.0;
-/// The backpack icon's side on mobile (touch controls).
+/// The backpack icon's side.
 const BACKPACK_SIZE: f32 = 56.0;
 /// Gap between the backpack icon and the screen's corner.
 const BACKPACK_MARGIN: f32 = 20.0;
@@ -38,7 +38,7 @@ pub(crate) struct HudLayout {
     pub(crate) prompt_below: bool,
     /// The action button, on a desktop only.
     pub(crate) action: Option<Rect>,
-    /// The backpack icon's rectangle (mobile only; `None` on desktop).
+    /// The backpack icon's rectangle in the top corner.
     pub(crate) backpack: Option<Rect>,
 }
 
@@ -98,17 +98,14 @@ impl HudLayout {
                 ACTION_SIZE,
             )
         });
-        let backpack = if touch {
-            let size = BACKPACK_SIZE;
-            Some(Rect::new(
-                width - BACKPACK_MARGIN - size,
-                BACKPACK_MARGIN,
-                size,
-                size,
-            ))
-        } else {
-            None
-        };
+        // The backpack is the inventory on every platform: an icon in the top corner that opens
+        // the panel in the middle of the screen.
+        let backpack = Some(Rect::new(
+            width - BACKPACK_MARGIN - BACKPACK_SIZE,
+            BACKPACK_MARGIN,
+            BACKPACK_SIZE,
+            BACKPACK_SIZE,
+        ));
         Self {
             slot,
             slots,

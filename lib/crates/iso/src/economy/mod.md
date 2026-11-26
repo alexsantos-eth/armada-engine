@@ -6,7 +6,7 @@ Este dominio es la economía básica del GDD (Fase 2): las monedas del jugador, 
 - **Precios (`Market`).** El planeta mueve todos los precios un porcentaje fijo (`100 ± planetSpread`, sacado de la semilla con `derive_seed`): el mismo item vale más o menos según el mundo, tanto al vender como al comprar. Los precios van en monedas enteras y nunca bajan de una.
 - **Estante diario.** De las herramientas que declara `goods`, cada día del reloj del mundo (`clock_time(tick).day`) el mercado pone `catalogSize` sobre el estante, elegidas ordenándolas por `derive_seed(semilla del día, herramienta)`. Es función de la semilla y del día, nunca de un flujo con estado, así que dos clientes ven el mismo estante. Se muestra de la más barata a la más cara.
 - **Comerciantes.** `merchants` lista los blueprints que comercian. Hoy es el `market_stall` (el puesto de las aldeas, zonas `center` y `market`): el vendedor es el puesto. `pick_merchant` elige el más cercano a menos de `TRADE_REACH` columnas y `TRADE_LEVEL_REACH` bloques de los pies; en un empate gana el id menor.
-- **Comercio.** Vender (`sell_item`) saca del inventario hasta lo pedido (lo que lleve, si lleva menos) y paga el precio del mercado; comprar (`buy_tool`) cobra el precio del estante y da la herramienta al cinturón. No se vende lo que las aldeas no compran, ni se compra lo que no está hoy en el estante, lo que ya se tiene o sin monedas suficientes (`TradeError`).
+- **Comercio.** Vender (`sell_item`) saca del inventario hasta lo pedido (lo que lleve, si lleva menos) y paga el precio del mercado; comprar (`buy_tool`) cobra el precio del estante y da la herramienta al cinturón. No se vende lo que las aldeas no compran, ni se compra lo que no está hoy en el estante o sin monedas suficientes (una herramienta se puede comprar otra vez: el cinturón la cuenta) (`TradeError`).
 
 El dominio no dibuja nada ni conoce teclas: la tienda vive en el cliente (`src/shop`).
 
@@ -51,7 +51,7 @@ El dominio no dibuja nada ni conoce teclas: la tienda vive en el cliente (`src/s
   - Firma: `pub fn sell_item( inventory: &mut Inventory, wallet: &mut Wallet, market: &Market, economy: &EconomyCatalog, item: &str, amount: u32, ) -> Result<u64, TradeError> {`
 - [`buy_tool`](trade.rs#L77) — Compra una herramienta del estante y devuelve su precio.
   - Firma: `pub fn buy_tool( toolbelt: &mut Toolbelt, wallet: &mut Wallet, market: &Market, items: &ItemCatalog, tool: &str, ) -> Result<u32, TradeError> {`
-- [`TradeError`](trade.rs#L43) — Por qué no hubo trato: `NothingToSell`, `NotOffered`, `AlreadyOwned`, `TooPoor`.
+- [`TradeError`](trade.rs#L43) — Por qué no hubo trato: `NothingToSell`, `NotOffered`, `TooPoor`.
 
 ### `merchant.rs`
 

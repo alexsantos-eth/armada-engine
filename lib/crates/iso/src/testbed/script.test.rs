@@ -222,3 +222,17 @@ fn shop_steps_ride_along_with_the_frame_that_takes_the_next_step() {
     assert_eq!(frame.shots, ["shop.png"]);
     assert!(run.frame(true).done);
 }
+
+#[test]
+fn inventory_panel_steps_ride_along_with_the_frame_that_takes_the_next_step() {
+    use crate::testbed::scene::ScenePack;
+    let mut run = script(vec![
+        SceneStep::Pack(ScenePack::Open),
+        SceneStep::Pack(ScenePack::Tools),
+        SceneStep::Shot("pack.png".to_owned()),
+    ]);
+
+    let frame = run.frame(true);
+    assert_eq!(frame.pack, [ScenePack::Open, ScenePack::Tools]);
+    assert_eq!(frame.shots, ["pack.png"]);
+}

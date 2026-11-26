@@ -62,8 +62,11 @@ fn the_buy_tab_shows_the_shelf_and_greys_out_what_cannot_be_bought() {
     };
     let buy = rows(Tab::Buy, &stock);
     assert_eq!(buy.len(), market.offers().len());
-    assert_eq!(buy[0].note, Some("Ya la tienes"));
-    assert!(!buy[0].enabled);
+    // A tool already owned can be bought again, and says how many are carried.
+    assert_eq!(buy[0].note, None);
+    assert!(buy[0].detail.ends_with("Tienes 1"), "{}", buy[0].detail);
+    assert!(!buy[0].enabled, "broke: nothing can be bought");
+    assert!(!buy[1].detail.contains("Tienes"));
     // Too poor for it: greyed out, with no words about why.
     assert_eq!(buy[1].note, None);
     assert!(!buy[1].enabled);
@@ -118,8 +121,7 @@ fn choosing_a_row_trades_and_says_so() {
     assert!(!said.earned);
     assert_eq!(said.coins, u64::from(offer.coins));
     assert_eq!(rich.coins(), 10_000 - u64::from(offer.coins));
-    assert_eq!(
-        trade(&pick, &mut carried, &mut rich, &market, &economy, &items),
-        Err("Ya la tienes")
-    );
+    // Buying it again is fine: there are two now.
+    trade(&pick, &mut carried, &mut rich, &market, &economy, &items).unwrap();
+    assert_eq!(carried.toolbelt.count(&offer.tool), 2);
 }

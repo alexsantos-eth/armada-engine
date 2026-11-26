@@ -2,7 +2,7 @@
 //! and where it sits (above the player), the desktop action button and the full-inventory note.
 //! Pure; tested in `hud_frame.test.rs`.
 
-use crate::ui::{UiAction, UiFrame, UiGain, UiStack};
+use crate::ui::{UiAction, UiFrame, UiGain, UiStack, UiTool};
 use iso::drops::StackGain;
 use iso::harvest::{HarvestStatus, HarvestTarget};
 use iso::inventory::Carried;
@@ -91,6 +91,18 @@ pub(crate) fn hud_frame(
                     name: item_name(&stack.item, items),
                     count: stack.count,
                 })
+            })
+            .collect(),
+        tools: carried
+            .toolbelt
+            .owned()
+            .into_iter()
+            .filter_map(|(id, count)| items.tool(id).map(|tool| (tool, count)))
+            .map(|(tool, count)| UiTool {
+                piece: crate::shop::tool_piece(tool.kind).to_owned(),
+                name: tool.name.clone(),
+                tier: tool.tier,
+                count,
             })
             .collect(),
         progress,
