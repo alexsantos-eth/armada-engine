@@ -154,29 +154,19 @@ def leaned(boxes, degrees=ICON_TILT):
 
 def icons():
     """tool_<id> → (the leaned model of the tool, its tile, the PNG it is drawn onto): one icon
-    per tool, as vox_items.py does for the items (the tool is drawn at the middle of the tile)."""
-    return {"tool_" + name: ((lambda build=build: leaned(build())), (1, 1, 1), "items/%s.png" % name)
+    per tool (the tool is drawn at the middle of the tile). vox_icons.py renders them, bare, next
+    to the items' icons; lib/scripts/build-ui-icons.py inks them."""
+    return {"tool_" + name: ((lambda build=build: leaned(build())), (1, 1, 1), "icons/%s.png" % name)
             for name, build in TOOLS.items()}
 
 
 def main(names):
-    """The tools' own models (`tool_<id>.vox`, in the hand's frame) and, with --render, their icons
-    (the leaned models, rendered onto lib/assets/items/<id>.png and inked like the items)."""
-    from vox_models import run
+    """The tools' own models (`tool_<id>.vox`, in the hand's frame). Their icons are rendered by
+    `vox_icons.py --render`."""
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "models")
     os.makedirs(out, exist_ok=True)
-    rendering = "--render" in names
-    names = [n for n in names if n != "--render"]
     for name in names or TOOLS:
         write(os.path.join(out, "tool_%s.vox" % name), TOOLS[name](), bounds=tile_volume((1, 1, 1)))
-    if rendering:
-        from item_outline import main as outline_main
-        models = icons()
-        wanted = ["tool_" + n for n in names] or list(models)
-        # The icons' .vox are written under their own names so they do not replace the hand models.
-        run({("icon_" + k[len("tool_"):]): v for k, v in models.items() if k in wanted},
-            ["--render"] + ["icon_" + k[len("tool_"):] for k in wanted])
-        outline_main([k[len("tool_"):] for k in wanted])
 
 
 if __name__ == "__main__":

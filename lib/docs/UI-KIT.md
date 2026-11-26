@@ -14,7 +14,7 @@ con sacudida y números con contorno que vuelan en arco hasta su slot.
 | [`web/ui/armada-ui.js`](../web/ui/armada-ui.js) | `window.ArmadaUI`: construye componentes y lanza las animaciones (catálogo y exportación). Script plano, sin build. |
 | [`web/ui/items/<id>.png`](../web/ui/items/) | Iconos de los ítems: el sprite que el juego usa para el montón en el suelo, recortado y centrado en 128 px. |
 | [`web/ui/index.html`](../web/ui/index.html) | Catálogo vivo: la muestra interactiva del HUD y cada componente con sus clases. Se publica en `/ui/`. |
-| [`scripts/build-ui-icons.py`](../scripts/build-ui-icons.py) | Regenera los iconos desde `assets/items/` (necesita Pillow). |
+| [`scripts/build-ui-icons.py`](../scripts/build-ui-icons.py) | Recorta los iconos desnudos de `artifacts/vox/icons/` y les dibuja el contorno de tinta, igual para ítems y herramientas (necesita Pillow y numpy). |
 
 `build-web.sh` copia `web/ui/` tal cual a `dist/ui/` para servir el catálogo; no hay paso de
 compilación. La página del juego (`web/index.html`) no carga el kit. El CSS es la única fuente del
@@ -117,7 +117,7 @@ PR muestran el HUD tal como se juega. `ClaySkin::load` devuelve `None` (con un a
 **Regenerar tras cambiar el CSS o los iconos:**
 
 ```bash
-python3 scripts/build-ui-icons.py     # si cambiaron los sprites de ítems
+python3 scripts/build-ui-icons.py     # si cambiaron los iconos de artifacts/vox/icons/ o el contorno
 node scripts/export-ui.cjs            # necesita Playwright con Chromium
 ```
 

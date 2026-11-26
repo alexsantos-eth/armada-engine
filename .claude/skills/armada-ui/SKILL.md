@@ -69,8 +69,10 @@ el dominio o el cliente, sigue además `armada-engine-dev`; esta skill manda en 
 5. **Míralo**: sirve `lib/web/` (o `bash scripts/build-web.sh <dist>` y `python3 -m http.server`)
    y abre `/ui/`; captura con Playwright (Chromium está preinstalado) si no hay navegador.
 
-Un icono de ítem nuevo sale del sprite del montón: `python3 scripts/build-ui-icons.py` (Pillow)
-recorta `assets/items/<id>.png` a `web/ui/items/<id>.png`. Los de herramienta son símbolos SVG
+Un icono de ítem o herramienta nuevo se renderiza desnudo con `artifacts/vox/clay/vox_icons.py
+--render <id>` (`artifacts/vox/icons/<id>.png`: la pieza voxel que cae por el ítem, o el modelo de la
+herramienta) y `python3 scripts/build-ui-icons.py` (Pillow, numpy) lo recorta y le dibuja el mismo
+contorno de tinta que a todos, a `web/ui/items/<id>.png`; el contorno vive solo en ese script. Los de herramienta son símbolos SVG
 del kit (`ArmadaUI.toolIcon`).
 
 ### 2. Declarar las piezas que el juego dibuja
@@ -88,7 +90,7 @@ componente dentro a su tamaño de diseño:
 
 ```bash
 cd lib
-python3 scripts/build-ui-icons.py      # solo si cambiaron los sprites de ítems
+python3 scripts/build-ui-icons.py      # solo si cambiaron los iconos o el contorno
 node scripts/export-ui.cjs             # Node + Playwright con Chromium
 ```
 

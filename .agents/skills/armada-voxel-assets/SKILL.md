@@ -18,6 +18,7 @@ Todas las entidades (naturaleza, piedras rúnicas, casas y edificios) están mig
 artifacts/vox/clay/vox_prefabs.py   las piezas del kit            → artifacts/vox/prefabs/*.vox
 artifacts/vox/clay/vox_models.py    naturaleza armada             → artifacts/vox/models/<nombre>.vox
 artifacts/vox/clay/vox_buildings.py piedras, casas y edificios    → artifacts/vox/models/<nombre>.vox
+artifacts/vox/clay/vox_icons.py     iconos desnudos de ítems y herramientas → artifacts/vox/icons/<id>.png
 artifacts/vox/clay/vox_stairs.py    las cuatro gradas (terreno)   → lib/assets/stairs/block_*.png
 artifacts/vox/clay/vox_render.py    Blender: modelo → sprite PNG  → lib/assets/<dir>/<asset>.png
 artifacts/vox/clay/vox_shadow.py    volúmenes de sombra de los .vox → lib/content/volumes/shadow-volumes.bin
@@ -476,6 +477,16 @@ mechas, boca del géiser) se apuntan en el comentario del modelo y en `emitters.
 una pieza, se mueven los dos. Piezas: `torch_cup`, `bowl`, `rod` (se apila cada 21), `candle`,
 `candle_tall`, `candle_short` (wax, red), `wax`, `sinter`/`sinter_small`, `hot_pool`,
 `fish_flat`; colores `WAX` `#f3e6c2`, `SINTER` `#d9d0b6`, `HOT_WATER` `#5fb8c8`.
+
+### Los iconos de ítems y herramientas (`vox_icons.py`)
+
+Lo que cae al derribar algo son las **piezas voxel** de la entidad marcadas `collect` (ver
+`vox_parts_pack.py`). El icono de un ítem (HUD, tienda) es esa misma pieza, ampliada para llenar la
+casilla; el de una herramienta, su modelo inclinado de `vox_tools.py`.
+`python3 artifacts/vox/clay/vox_icons.py --render [<id> …]` los deja **desnudos** en
+`artifacts/vox/icons/<id>.png` (`FACE` elige otra pieza si la primera de `pieces` no es buena cara).
+El contorno de tinta no se hornea: `lib/scripts/build-ui-icons.py` lo dibuja igual para todos al
+recortar a `web/ui/items/`, y luego `node lib/scripts/export-ui.cjs` (ver `lib/docs/ASSET-PIPELINE.md`).
 
 ## 8. Antes de entregar
 

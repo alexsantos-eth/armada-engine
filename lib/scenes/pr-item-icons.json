@@ -1,0 +1,72 @@
+{
+  "world": "procedural",
+  "window": [
+    1280,
+    800
+  ],
+  "zoom": 2.2,
+  "phase": "day",
+  "centre": [
+    -12,
+    142
+  ],
+  "player": [
+    -12,
+    142
+  ],
+  "edits": [],
+  "steps": [
+    "settle",
+    {
+      "shot": "icons-0-hotbar.png"
+    },
+    {
+      "pack": "open"
+    },
+    {
+      "shot": "icons-1-backpack-items.png"
+    },
+    {
+      "pack": "tools"
+    },
+    {
+      "shot": "icons-2-backpack-tools.png"
+    }
+  ],
+  "out": "shots",
+  "maxFrames": 900,
+  "carry": [
+    {
+      "item": "wood",
+      "amount": 3
+    },
+    {
+      "item": "stone",
+      "amount": 4
+    },
+    {
+      "item": "fiber",
+      "amount": 5
+    },
+    {
+      "item": "mushroom",
+      "amount": 6
+    },
+    {
+      "item": "coconut",
+      "amount": 7
+    },
+    {
+      "item": "bone",
+      "amount": 8
+    },
+    {
+      "item": "copper_ore",
+      "amount": 9
+    },
+    {
+      "item": "amber",
+      "amount": 10
+    }
+  ]
+}

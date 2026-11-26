@@ -97,9 +97,7 @@ añadir una entidad recolectable hay que regenerar todo; el test
 las tres casas y los edificios, los de dos casillas en sus dos orientaciones) con las piezas de
 piedra y de construcción: muros y tejados sobre el mismo módulo de 28.
 
-`artifacts/vox/clay/vox_items.py` arma los items que caen al suelo al recolectar (madera, piedra,
-fibra, hongo, coco, hueso, cobre y ámbar): montones pequeños en el centro de un volumen 1x1x1,
-renderizados a `lib/assets/items/<id>.png`, que cada item de `content/json/items.json` nombra en `sprite`. Cada sprite lleva un **contorno de tinta negra** (`#1a120d`, el `--ac-ink` del kit de UI) algo ondulado, de 11 px en el original (unos tres en el atlas), como el recorte de papel de la interfaz: lo dibuja `artifacts/vox/clay/item_outline.py`, que `vox_items.py --render` llama tras cada render. Es idempotente (el PNG ya contorneado lleva un chunk `armada-outline` y se salta). Tras cambiar un sprite de item: `python3 lib/scripts/build-ui-icons.py`, copiar `web/ui/items/*.png` a `content/ui/items/` y `lib/scripts/build-atlas.sh`.
+`artifacts/vox/clay/vox_icons.py` renderiza los iconos **desnudos** de cada ítem y herramienta a `artifacts/vox/icons/<id>.png`: el icono de un ítem es la pieza voxel que el juego suelta por él (la primera pieza `collect` de su `pieces` en `items.json`, ampliada hasta llenar la casilla; `FACE` fija otra si hace falta) y el de una herramienta su modelo inclinado (`vox_tools.py`). El **contorno de tinta** (`#1a120d`, el `--ac-ink` del kit) no se hornea en esos renders: `lib/scripts/build-ui-icons.py` lo dibuja al recortar, igual para todos (ítems y herramientas), con ancho y ondulación como constantes (`OUTLINE`, `WOBBLE`), así que cambiar la línea nunca obliga a volver a renderizar. Tras cambiar un icono o el contorno: `python3 lib/scripts/build-ui-icons.py` y `node lib/scripts/export-ui.cjs`.
 
 `artifacts/vox/clay/terrain_clay.py` genera todo el terreno de suelo: hierba
 (`grass/block.png` y `block_2..4.png`), tierra (`ground/block.png`, `block_2..3.png`), arena
