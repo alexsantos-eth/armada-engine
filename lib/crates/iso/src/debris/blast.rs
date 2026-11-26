@@ -114,6 +114,17 @@ fn flights(fragment: &Fragment) -> (f64, f64) {
     (first, 2.0 * rebound / DEBRIS_GRAVITY)
 }
 
+/// Where `fragment` ends up lying, in columns from the anchor's centre: where its bounce ends.
+pub fn rest_of(fragment: &Fragment) -> [f64; 2] {
+    let (first, second) = flights(fragment);
+    let [x, y, _] = fragment.start;
+    let [vx, vy, _] = fragment.velocity;
+    [
+        x + vx * first + vx * DEBRIS_SLIDE * second,
+        y + vy * first + vy * DEBRIS_SLIDE * second,
+    ]
+}
+
 /// How `fragment` looks `ms` after the blast; `None` once it is gone.
 pub fn pose_at(fragment: &Fragment, ms: f64) -> Option<Pose> {
     if !(0.0..DEBRIS_MS).contains(&ms) {

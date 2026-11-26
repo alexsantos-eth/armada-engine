@@ -76,6 +76,8 @@ centro del suelo de la casilla ancla: así el archivo dice dónde está plantado
 
 ### Cómo se arma, en JSON (`*.parts.json`)
 
+Cada pieza lleva `collect`: si se queda flotando como ítem al recolectar la entidad. Por defecto lo es toda pieza que algún ítem de `items.json` declara en `pieces`; para dejar una de adorno, `put(..., collect=False)` en el modelo (los hongos pequeños de `mushrooms`) y `vox_models.py --parts` + `vox_parts_pack.py`.
+
 Cada modelo de `vox_models.py` y `vox_buildings.py` escribe junto a su `.vox` un
 `artifacts/vox/models/<nombre>.parts.json` con **las piezas del kit de las que se armó**: por pieza,
 su nombre (`trunk`, `leaf_block`…), el vóxel donde está plantada (`at`: el medio de su huella, sobre su
@@ -86,7 +88,7 @@ pieza llamada `box`. `python3 vox_models.py --parts` escribe solo estos JSON y d
 están (el `.vox` versionado puede ir por detrás del generador).
 
 `python3 artifacts/vox/clay/vox_parts_pack.py` junta los de las entidades con regla de recolección en
-`items.json` en `lib/content/json/entity-parts.json` (por pieza: nombre, dónde está y su sprite `debris/p_<hash>`, el hash de sus cajas), que el juego lee (`iso::debris::parse_parts`) para
+`items.json` en `lib/content/json/entity-parts.json` (por pieza: nombre, dónde está, su sprite `debris/p_<hash>`, el hash de sus cajas, y `collect` si al talar queda flotando como ítem), que el juego lee (`iso::debris::parse_parts`) para
 hacer estallar la entidad en sus piezas al recolectarla. Se busca por el sprite (`tree/block_2`). `python3 artifacts/vox/clay/vox_debris.py` renderiza con Blender (clay, 32 muestras, unos 7 s cada una) un sprite por pieza distinta que falte en `lib/assets/debris/` (con nombres, esos aunque existan), con el origen de la pieza en el pie de la casilla; una pieza más ancha que una casilla va en un lienzo 2x2 y movida 64 vóxeles (`shift` en el JSON). Después `build-atlas.sh` y recompilar. Al
 añadir una entidad recolectable hay que regenerar todo; el test
 `the_packed_entities_read_and_cover_every_harvestable_sprite` falla si falta alguna.

@@ -234,25 +234,22 @@ impl Game {
         {
             if taken.id() == target.id {
                 felled = Some(target.clone());
+                let seed = iso::terrain::derive_seed(self.world_seed, &target.id);
+                let felled_at = iso::drops::Felled {
+                    id: &target.id,
+                    anchor: target.anchor,
+                    elevation: target.elevation,
+                };
                 if let Some(parts) = self.entity_parts.of_sprite(taken.texture_source()) {
-                    self.debris.spawn(
-                        parts,
-                        target.anchor,
-                        target.elevation,
-                        iso::terrain::derive_seed(self.world_seed, &target.id),
-                    );
+                    // The pieces that stand for what it gave stay floating as the items.
+                    let plan = iso::drops::plan_pieces(parts, yields, &self.items, seed);
+                    self.drops.spawn_pieces(felled_at, parts, seed, &plan.picks);
+                    self.debris
+                        .spawn(parts, target.anchor, target.elevation, seed, &plan.parts());
                 }
                 if let Some(shadows) = self.shadows.as_mut() {
                     shadows.erase(&self.manager, iso::harvest::shadow_area(target.anchor));
                 }
-                self.drops.spawn(
-                    iso::drops::Felled {
-                        id: &target.id,
-                        anchor: target.anchor,
-                        elevation: target.elevation,
-                    },
-                    yields,
-                );
                 self.unsaved_changes = true;
             } else {
                 self.manager.put_entity(taken);

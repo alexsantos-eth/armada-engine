@@ -51,9 +51,10 @@ pub struct ItemDef {
     /// Colour of the chips a blow knocks off what yields it, as six hex digits (`a0703c`).
     #[serde(default)]
     color: Option<String>,
-    /// Sprite of a heap of it lying on the ground, by its path in the asset manifest.
+    /// The pieces of the voxel kit (`iso::debris`) that stand for it: when what yields it comes
+    /// apart, pieces of these it was built from stay floating as the items to pick up.
     #[serde(default)]
-    pub sprite: Option<String>,
+    pub pieces: Vec<String>,
 }
 
 impl ItemDef {

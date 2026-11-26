@@ -1,6 +1,6 @@
 # Harvest (cliente)
 
-La vista de la recolección: los montones de items en el suelo, lanzados desde lo derribado y flotando sobre su sombra (`drop_view.rs`), la sacudida de lo golpeado y las ráfagas de astillas (`impact.rs`), las piezas que salen despedidas cuando lo golpeado cae (`debris_view.rs`), la barra de slots del inventario (abajo en el centro; con controles táctiles, un icono de mochila arriba), la barra de progreso mientras se trabaja, encima de la entidad que se está cosechando, y la nota de lo ganado (`+3 Madera`) durante `GAIN_NOTE_MS`.
+La vista de la recolección: las piezas-item en el suelo, lanzadas desde lo derribado y flotando sobre su sombra (`drop_view.rs`), la sacudida de lo golpeado y las ráfagas de astillas (`impact.rs`), las piezas que salen despedidas cuando lo golpeado cae (`debris_view.rs`), la barra de slots del inventario (abajo en el centro; con controles táctiles, un icono de mochila arriba), la barra de progreso mientras se trabaja, encima de la entidad que se está cosechando, y la nota de lo ganado (`+3 Madera`) durante `GAIN_NOTE_MS`.
 
 Las reglas viven en `iso::harvest`, `iso::inventory` e `iso::items`; el paso fijo que las corre es `Game::step_harvest` (`src/game/frame.rs`) y el guardado de lo que lleva el jugador es `save::snapshot_of`. Esta carpeta solo traduce el estado a pantalla. Es entrada de juego, no overlay: se pinta en todas las rutas que juegan el mundo (también `/` y las corridas guionizadas, antes de escribir las capturas) y no en `/maker`. Los textos van sin tildes porque la fuente por defecto de Macroquad no las dibuja.
 
@@ -72,7 +72,7 @@ Lo que un golpe hace a la vista. `Game::step_harvest` le pasa a `Impacts::notice
 
 ### `drop_view.rs`
 
-Cómo se ve un montón en el suelo. Al aparecer vuela en arco desde lo que lo soltó hasta donde cae (`TOSS_MS`, `TOSS_HEIGHT`) y luego sube y baja un poco (`BOB_LIFT`, `BOB_MS`, con una fase por id para que no floten todos a la vez). `DropViews` lleva cuánto lleva cada uno en el suelo; los que ya estaban al abrir la partida no vuelan (`DropViews::landed`). `Game::collect_drops` (`src/game/scene.rs`) dibuja cada montón con el sprite de su item (`sprite` en `items.json`) sobre una sombra pequeña (`DROP_SHADOW_SCALE` de la del jugador), ordenado con las figuras. Las reglas de movimiento son puras y se prueban en `drop_view.test.rs`.
+Cómo se ve una pieza-item en el suelo. Al aparecer vuela en arco desde lo que lo soltó hasta donde cae (`TOSS_MS`, `TOSS_HEIGHT`) hasta `PIECE_HOVER` sobre el suelo y luego sube y baja un poco (`BOB_LIFT`, `BOB_MS`, con una fase por id para que no floten todos a la vez). `DropViews` lleva cuánto lleva cada uno en el suelo; los que ya estaban al abrir la partida no vuelan (`DropViews::landed`). `Game::collect_drops` (`src/game/scene.rs`) dibuja cada pieza con su sprite de Blender (`Drop::piece`, el mismo `debris/p_<hash>` de la explosión) sobre una sombra pequeña (`DROP_SHADOW_SCALE` de la del jugador), ordenado con las figuras. Las reglas de movimiento son puras y se prueban en `drop_view.test.rs`.
 
 - [`toss`](drop_view.rs#L29) — Dónde se dibuja un montón y a qué altura, `age_ms` después de caer.
   - Firma: `pub(crate) fn toss(age_ms: f64, drop: &Drop) -> DropPose {`

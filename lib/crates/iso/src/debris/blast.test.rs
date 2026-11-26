@@ -9,6 +9,7 @@ fn part(at: [f64; 3]) -> Part {
         at,
         sprite: "debris/p_0123456789".into(),
         shift: [0.0, 0.0],
+        collect: true,
     }
 }
 

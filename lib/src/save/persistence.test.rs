@@ -52,13 +52,26 @@ fn a_saved_archive_records_what_the_player_carries_and_the_heaps_on_the_ground()
     let mut carried = iso::inventory::Carried::starting(4, &items);
     carried.inventory.add("wood", 3, &items);
     let mut drops = iso::drops::Drops::default();
-    drops.spawn(
+    let parts = iso::debris::EntityParts {
+        tiles: [1, 1, 1],
+        parts: vec![iso::debris::Part {
+            piece: "trunk".into(),
+            at: [0.0, 0.0, 0.0],
+            sprite: "debris/p_test".into(),
+            shift: [0.0, 0.0],
+            collect: true,
+        }],
+    };
+    drops.spawn_pieces(
         iso::drops::Felled {
             id: "tree@0,0",
             anchor: iso::grid::WorldCoord { x: 0, y: 0 },
             elevation: 0,
         },
-        &[iso::items::HarvestYield {
+        &parts,
+        1,
+        &[iso::drops::PiecePick {
+            part: 0,
             item: "wood".into(),
             amount: 3,
         }],

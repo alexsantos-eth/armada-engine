@@ -51,8 +51,8 @@ pub(crate) fn catalog_json() -> &'static str {
     r#"{
         "schemaVersion": 1,
         "items": [
-            { "id": "wood", "name": "Madera", "stack": 50, "rarity": "common", "color": "a0703c", "sprite": "/assets/items/wood.png" },
-            { "id": "stone", "name": "Piedra", "stack": 50, "rarity": "common" },
+            { "id": "wood", "name": "Madera", "stack": 50, "rarity": "common", "color": "a0703c", "pieces": ["trunk", "branch"] },
+            { "id": "stone", "name": "Piedra", "stack": 50, "rarity": "common", "pieces": ["rock_s"] },
             { "id": "fiber", "name": "Fibra", "stack": 99, "rarity": "common" },
             { "id": "copper_ore", "name": "Cobre", "stack": 30, "rarity": "rare" }
         ],
@@ -298,16 +298,6 @@ fn rejects_a_colour_that_is_not_six_hex_digits() {
         parse_items(&json, &entities()),
         Err(ItemsError::InvalidColor { id: "wood".into() })
     );
-}
-
-#[test]
-fn an_item_may_name_the_sprite_of_its_heap_on_the_ground() {
-    let catalog = parsed();
-    assert_eq!(
-        catalog.item("wood").unwrap().sprite.as_deref(),
-        Some("/assets/items/wood.png")
-    );
-    assert_eq!(catalog.item("stone").unwrap().sprite, None);
 }
 
 #[test]

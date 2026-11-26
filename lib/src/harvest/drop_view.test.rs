@@ -11,24 +11,28 @@ fn drop_at(id: u64) -> Drop {
         elevation: 2.0,
         from: GridPoint { x: 4.0, y: 7.0 },
         wait: 0,
+        piece: iso::drops::DropPiece {
+            sprite: "debris/p_test".into(),
+            shift: [0.0, 0.0],
+        },
     }
 }
 
 #[test]
-fn a_new_heap_flies_from_what_dropped_it_to_where_it_lands() {
+fn a_new_piece_flies_from_what_dropped_it_to_where_it_lands() {
     let drop = drop_at(1);
     let start = toss(0.0, &drop);
     assert_eq!(start.at, drop.from);
     assert_eq!(start.lift, 0.0);
     let middle = toss(TOSS_MS / 2.0, &drop);
     assert!(middle.at.x > drop.from.x && middle.at.x < drop.at.x);
-    assert!((middle.lift - TOSS_HEIGHT).abs() < 1e-9);
+    assert!((middle.lift - (TOSS_HEIGHT + PIECE_HOVER / 2.0)).abs() < 1e-9);
     let landed = toss(TOSS_MS, &drop);
     assert_eq!(landed.at, drop.at);
 }
 
 #[test]
-fn a_landed_heap_bobs_a_little_and_never_sinks() {
+fn a_landed_piece_bobs_a_little_and_never_sinks() {
     let drop = drop_at(1);
     let lifts: Vec<f64> = (0..40)
         .map(|step| toss(TOSS_MS + f64::from(step) * 50.0, &drop).lift)
@@ -36,9 +40,13 @@ fn a_landed_heap_bobs_a_little_and_never_sinks() {
     assert!(
         lifts
             .iter()
-            .all(|lift| (0.0..=BOB_LIFT + 1e-9).contains(lift))
+            .all(|lift| (PIECE_HOVER..=PIECE_HOVER + BOB_LIFT + 1e-9).contains(lift))
     );
-    assert!(lifts.iter().any(|lift| *lift > BOB_LIFT * 0.5));
+    assert!(
+        lifts
+            .iter()
+            .any(|lift| *lift > PIECE_HOVER + BOB_LIFT * 0.5)
+    );
 }
 
 #[test]

@@ -21,7 +21,7 @@ El dominio no guarda nada ni conoce el inventario: es catálogo puro. El inventa
 }
 ```
 
-- `stack`: unidades máximas por slot (≥ 1). `rarity`: `common`, `rare` o `exotic`. `sprite` (opcional): el sprite del montón del item en el suelo (`/assets/items/<id>.png`). `color` (opcional): seis dígitos hex, el color de las astillas que suelta un golpe sobre lo que lo da (`ItemDef::color`).
+- `stack`: unidades máximas por slot (≥ 1). `rarity`: `common`, `rare` o `exotic`. `pieces`: los nombres de pieza del kit (`iso::debris`) que representan al item cuando lo que lo da se rompe: esas piezas quedan flotando como los items que se recogen. `color` (opcional): seis dígitos hex, el color de las astillas que suelta un golpe sobre lo que lo da (`ItemDef::color`).
 - `kind`: `axe`, `pickaxe` o `net`. `tier`: `1..=10`.
 - `ticks`: trabajo a mano, en ticks fijos (20 por segundo); una herramienta de nivel `n` lo divide por su multiplicador.
 - Los nombres no llevan tildes: la fuente por defecto de Macroquad no las dibuja.

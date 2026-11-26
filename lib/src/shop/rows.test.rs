@@ -38,7 +38,7 @@ fn the_sell_tab_lists_what_is_carried_and_paid_for() {
     };
     let sell = rows(Tab::Sell, &stock);
     let names: Vec<_> = sell.iter().map(|row| row.name.as_str()).collect();
-    assert_eq!(names, ["Piedra", "Madera"].map(str::to_owned));
+    assert_eq!(names, ["Roca", "Tronco"].map(str::to_owned));
     assert_eq!(sell[1].detail, "x70", "two slots of wood are one row");
     let unit = u64::from(market.sell_price(&economy, "wood").unwrap());
     assert_eq!(sell[1].coins, unit * 70);
@@ -92,7 +92,7 @@ fn choosing_a_row_trades_and_says_so() {
     };
     let sale = rows(Tab::Sell, &stock).remove(0);
     let said = trade(&sale, &mut carried, &mut wallet, &market, &economy, &items).unwrap();
-    assert_eq!(said.text, "Vendiste Madera");
+    assert_eq!(said.text, "Vendiste Tronco");
     assert!(said.earned);
     assert_eq!(said.coins, sale.coins);
     assert_eq!(carried.inventory.count("wood"), 0);

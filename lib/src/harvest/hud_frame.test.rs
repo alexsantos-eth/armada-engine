@@ -4,7 +4,7 @@ use super::*;
 use iso::grid::WorldCoord;
 use iso::harvest::{HarvestBlock, HarvestStatus, HarvestTarget};
 use iso::inventory::Carried;
-use iso::items::{HarvestYield, ItemCatalog, ToolKind};
+use iso::items::{ItemCatalog, ToolKind};
 
 fn items() -> ItemCatalog {
     let entities: iso::entities::EntityCatalog =
@@ -47,7 +47,7 @@ fn the_frame_lists_every_slot_with_names() {
     let first = frame.slots[0].as_ref().unwrap();
     assert_eq!(
         (first.item.as_str(), first.name.as_str(), first.count),
-        ("wood", "Madera", 7)
+        ("wood", "Tronco", 7)
     );
     assert!(frame.slots[1..].iter().all(Option::is_none));
     assert_eq!(frame.action, None);
@@ -90,7 +90,7 @@ fn work_under_way_reports_its_share_and_where_it_sits() {
     );
     assert_eq!(frame.progress, Some(0.33));
     assert_eq!(frame.progress_at, Some((10.0, 20.0)));
-    assert_eq!(frame.progress_name, Some("Piedra".into()));
+    assert_eq!(frame.progress_name, Some("Roca".into()));
     let action = frame.action.unwrap();
     assert_eq!(
         (action.verb.as_str(), action.tool.as_str()),
@@ -145,7 +145,7 @@ fn only_the_full_inventory_note_reaches_the_kit() {
         &carried(&items),
         &items,
         &HarvestStatus::Idle,
-        Some("+3 Madera"),
+        Some("+3 Tronco"),
         false,
         None,
         false,
@@ -189,13 +189,26 @@ fn collecting_more_wood_keeps_a_full_stack_at_its_limit_during_the_flight() {
     let limit = items.item("wood").unwrap().stack;
     carried.inventory.add("wood", limit, &items);
     let mut drops = iso::drops::Drops::default();
-    drops.spawn(
+    let parts = iso::debris::EntityParts {
+        tiles: [1, 1, 1],
+        parts: vec![iso::debris::Part {
+            piece: "trunk".into(),
+            at: [0.0, 0.0, 0.0],
+            sprite: "debris/p_test".into(),
+            shift: [0.0, 0.0],
+            collect: true,
+        }],
+    };
+    drops.spawn_pieces(
         iso::drops::Felled {
             id: "tree@0,0",
             anchor: WorldCoord { x: 0, y: 0 },
             elevation: 0,
         },
-        &[HarvestYield {
+        &parts,
+        1,
+        &[iso::drops::PiecePick {
+            part: 0,
             item: "wood".into(),
             amount: 3,
         }],

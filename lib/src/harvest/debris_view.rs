@@ -77,19 +77,24 @@ impl Blast {
 
 impl DebrisView {
     /// Starts the blast of an entity of `parts` that stood on the tile `anchor`, on the block
-    /// `elevation`. `seed` scatters the pieces: the same one breaks the same way.
+    /// `elevation`. `seed` scatters the pieces: the same one breaks the same way. The pieces
+    /// listed in `kept` do not fade with the rest: they stay as the items to pick up.
     pub(crate) fn spawn(
         &mut self,
         parts: &EntityParts,
         anchor: WorldCoord,
         elevation: i32,
         seed: u64,
+        kept: &[usize],
     ) {
         if self.blasts.len() >= MAX_BLASTS {
             self.blasts.remove(0);
         }
         self.blasts.push(Blast {
-            fragments: blast(parts, seed),
+            fragments: blast(parts, seed)
+                .into_iter()
+                .filter(|fragment| !kept.contains(&fragment.part))
+                .collect(),
             parts: parts.clone(),
             anchor: GridPoint {
                 x: f64::from(anchor.x) + 0.5,

@@ -54,7 +54,7 @@ fn a_slot_shows_its_item_s_name_and_count() {
     };
     assert_eq!(
         slot_label(&stack, &items()),
-        ("Madera".to_owned(), "7".to_owned())
+        ("Tronco".to_owned(), "7".to_owned())
     );
 }
 
@@ -91,5 +91,5 @@ fn a_finished_harvest_reads_as_what_was_gained() {
             amount: 1,
         },
     ];
-    assert_eq!(gain_text(&yields, &items()), "+2 Cobre  +1 Piedra");
+    assert_eq!(gain_text(&yields, &items()), "+2 Cobre  +1 Roca");
 }

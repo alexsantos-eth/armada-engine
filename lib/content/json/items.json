@@ -3,27 +3,59 @@
   "items": [
     {
       "id": "wood",
-      "name": "Madera",
+      "name": "Tronco",
       "stack": 50,
       "rarity": "common",
       "color": "9a6a3c",
-      "sprite": "/assets/items/wood.png"
+      "pieces": [
+        "trunk",
+        "trunk_thick",
+        "trunk_thin",
+        "trunk_root",
+        "log",
+        "log_long",
+        "palm_trunk",
+        "driftwood",
+        "stump",
+        "branch_long",
+        "branch"
+      ]
     },
     {
       "id": "stone",
-      "name": "Piedra",
+      "name": "Roca",
       "stack": 50,
       "rarity": "common",
       "color": "9c9a94",
-      "sprite": "/assets/items/stone.png"
+      "pieces": [
+        "rock_l",
+        "stone_block",
+        "stone_half",
+        "stone_lying",
+        "stone_small",
+        "flat_stone_small",
+        "beach_rock",
+        "rock_s",
+        "pebble_l",
+        "pebble_m",
+        "pebble_s"
+      ]
     },
     {
       "id": "fiber",
-      "name": "Fibra",
+      "name": "Hierba",
       "stack": 99,
       "rarity": "common",
       "color": "9fbf5a",
-      "sprite": "/assets/items/fiber.png"
+      "pieces": [
+        "grass_tuft",
+        "sprout",
+        "thistle",
+        "thistle_short",
+        "leaf_block",
+        "leaf_tuft",
+        "wildflower"
+      ]
     },
     {
       "id": "mushroom",
@@ -31,7 +63,10 @@
       "stack": 20,
       "rarity": "common",
       "color": "d8c3a0",
-      "sprite": "/assets/items/mushroom.png"
+      "pieces": [
+        "mushroom",
+        "toadstool"
+      ]
     },
     {
       "id": "coconut",
@@ -39,7 +74,10 @@
       "stack": 20,
       "rarity": "common",
       "color": "7a5230",
-      "sprite": "/assets/items/coconut.png"
+      "pieces": [
+        "coconut",
+        "coconut_half"
+      ]
     },
     {
       "id": "bone",
@@ -47,7 +85,12 @@
       "stack": 30,
       "rarity": "common",
       "color": "eee6d2",
-      "sprite": "/assets/items/bone.png"
+      "pieces": [
+        "skull_horned",
+        "skull",
+        "rib",
+        "bone"
+      ]
     },
     {
       "id": "copper_ore",
@@ -55,7 +98,10 @@
       "stack": 30,
       "rarity": "rare",
       "color": "c07a45",
-      "sprite": "/assets/items/copper_ore.png"
+      "pieces": [
+        "ore",
+        "vein"
+      ]
     },
     {
       "id": "amber",
@@ -63,7 +109,10 @@
       "stack": 30,
       "rarity": "rare",
       "color": "e8a33a",
-      "sprite": "/assets/items/amber.png"
+      "pieces": [
+        "vein",
+        "ore"
+      ]
     }
   ],
   "tools": [

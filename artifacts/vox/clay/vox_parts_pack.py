@@ -54,10 +54,13 @@ def piece_shift(boxes):
 
 def packed_parts(model):
     """The `.parts.json` of a model, as the game reads it: each piece's name, where it stands,
-    its sprite and, for a wide piece, how far its sprite was shifted (`shift`)."""
+    its sprite, whether it is collectable as an item (`collect`, only written when true) and, for a
+    wide piece, how far its sprite was shifted (`shift`)."""
     out = []
     for p in model["parts"]:
         part = dict(piece=p["piece"], at=p["at"], sprite=piece_sprite(p))
+        if p.get("collect"):
+            part["collect"] = True
         if any(piece_shift(p["boxes"])):
             part["shift"] = piece_shift(p["boxes"])
         out.append(part)
