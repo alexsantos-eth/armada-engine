@@ -3,7 +3,7 @@
 
 use crate::harvest::HarvestTarget;
 use crate::inventory::Carried;
-use crate::items::{HarvestYield, ItemCatalog, ToolKind, tool_speed_tenths};
+use crate::items::{HarvestYield, ItemCatalog, ToolDef, ToolKind, tool_speed_tenths};
 
 /// Fixed ticks of one feedback cycle: wind up, strike, follow through.
 pub const HARVEST_STRIKE_TICKS: u32 = 6;
@@ -174,6 +174,18 @@ impl Harvester {
         self.progress = 0;
         self.swing_ticks = 0;
     }
+}
+
+/// The tool the player swings at an entity of `blueprint`: the best carried of the kind its
+/// harvest rule asks for. `None` when it is gathered by hand, has no rule, or the tool is not
+/// carried.
+pub fn tool_in_hand<'a>(
+    blueprint: &str,
+    carried: &Carried,
+    items: &'a ItemCatalog,
+) -> Option<&'a ToolDef> {
+    let kind = items.harvest_rule(blueprint)?.tool?;
+    carried.toolbelt.best(kind, items)
 }
 
 #[cfg(test)]
