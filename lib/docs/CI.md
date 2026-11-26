@@ -84,3 +84,19 @@ satisfacer con un estado puesto a mano.
   lado.
 - **wasm:** casi siempre es código nativo (`std::fs`, hilos, `std::time::Instant`) usado fuera de
   un `#[cfg(not(target_arch = "wasm32"))]`.
+
+## Preview jugable por PR (Netlify)
+
+`.github/workflows/pr-preview.yml` compila el wasm con `scripts/build-web.sh`, lo sube con el CLI
+de Netlify bajo el alias `pr-<número>` y comenta el enlace en el PR
+(`https://pr-<número>--<sitio>.netlify.app`, fijo y actualizado en cada push). No es un check
+requerido; sin secretos o en PRs desde forks se salta sin fallar.
+
+Configuración (una vez):
+
+1. En Netlify, crear un sitio **sin conectar al repo** (Add new site → Deploy manually, o
+   `npx netlify-cli sites:create`). Si el sitio ya estuviera enlazado a GitHub, desactivar allí los
+   deploy previews para no compilar dos veces.
+2. Copiar el **Site ID** (Site configuration → Site details).
+3. Crear un **Personal access token** (User settings → Applications → Personal access tokens).
+4. En GitHub, Settings → Secrets and variables → Actions: `NETLIFY_SITE_ID` y `NETLIFY_AUTH_TOKEN`.

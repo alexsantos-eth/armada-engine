@@ -1,0 +1,101 @@
+# Playable preview of every pull request into iso-rust, on Netlify.
+#
+# Builds the wasm client here (scripts/build-web.sh, the same script the production site
+# uses) and uploads the result with the Netlify CLI under the alias `pr-<number>`, so the
+# preview lives at https://pr-<number>--<site>.netlify.app and keeps the same URL across
+# pushes. The link is posted as one sticky comment on the PR. Opens on iPhone, no Mac needed.
+#
+# Needs two repository secrets: NETLIFY_AUTH_TOKEN and NETLIFY_SITE_ID. Without them (or on
+# PRs from forks, which never get secrets) the job is skipped quietly. Setup: lib/docs/CI.md.
+name: PR preview
+
+on:
+  pull_request:
+    branches: [iso-rust]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "lib/**"
+      - "netlify.toml"
+      - ".github/workflows/pr-preview.yml"
+
+concurrency:
+  group: pr-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  preview:
+    if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+    steps:
+      - name: Check the Netlify secrets
+        id: gate
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ] || [ -z "$NETLIFY_SITE_ID" ]; then
+            echo "::notice::NETLIFY_AUTH_TOKEN / NETLIFY_SITE_ID are not set; skipping the preview."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+
+      - uses: Swatinem/rust-cache@v2
+        if: steps.gate.outputs.run == 'true'
+        with:
+          workspaces: lib
+
+      - name: Build the site (wasm + content)
+        if: steps.gate.outputs.run == 'true'
+        working-directory: lib
+        run: bash scripts/build-web.sh dist
+
+      - name: Deploy to Netlify
+        if: steps.gate.outputs.run == 'true'
+        id: deploy
+        env:
+          ALIAS: pr-${{ github.event.pull_request.number }}
+        run: |
+          npx --yes netlify-cli@23 deploy \
+            --dir=lib/dist \
+            --site="$NETLIFY_SITE_ID" \
+            --alias="$ALIAS" \
+            --message="PR #${{ github.event.pull_request.number }} ${{ github.event.pull_request.head.sha }}" \
+            --json > "$RUNNER_TEMP/deploy.json"
+          url="$(jq -r '.deploy_url' "$RUNNER_TEMP/deploy.json")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Preview: $url"
+
+      - name: Comment the link on the PR
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.url }}
+        with:
+          script: |
+            const marker = '<!-- pr-preview -->';
+            const url = process.env.PREVIEW_URL;
+            const sha = context.payload.pull_request.head.sha.slice(0, 7);
+            const body = `${marker}\n### Preview del juego\n\n` +
+              `[**Abrir preview**](${url}) · [playground](${url}/playground/) · [maker](${url}/maker/)\n\n` +
+              `Commit \`${sha}\`. La URL es fija para este PR y se actualiza con cada push.`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const mine = comments.find(c => c.body && c.body.includes(marker));
+            if (mine) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
