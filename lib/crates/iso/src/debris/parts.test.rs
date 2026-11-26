@@ -75,3 +75,18 @@ fn every_piece_sprite_is_in_the_atlas_manifest() {
         }
     }
 }
+
+#[test]
+fn a_patch_of_mushrooms_only_lets_its_big_toadstools_be_collected() {
+    let catalog = parse_parts(include_str!("../../../../content/json/entity-parts.json")).unwrap();
+    let patch = catalog
+        .of_sprite("/assets/field/block_mushrooms.png")
+        .unwrap();
+    let collectable: Vec<&str> = patch
+        .parts
+        .iter()
+        .filter(|part| part.collect)
+        .map(|part| part.piece.as_str())
+        .collect();
+    assert_eq!(collectable, ["toadstool"; 4]);
+}

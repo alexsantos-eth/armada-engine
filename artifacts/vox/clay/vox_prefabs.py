@@ -11,6 +11,8 @@
 # height) and leave 1 voxel of air per side, so two neighbours show a 2-voxel seam by
 # themselves. Every file carries the same palette, flat material colours, no baked light.
 # Sizes below are in voxels: (x, y, z0, size x, size y, size z, colour, corner radius).
+import functools
+import json
 import math
 import os
 import sys
@@ -684,12 +686,23 @@ def spun(boxes, quarters):
 _PLACED = {}
 
 
-def piece(name, variant=""):
+@functools.lru_cache(maxsize=None)
+def _collectable():
+    """The pieces some item of items.json is made of: the ones a piece of an entity is collectable
+    as by default."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "lib", "content", "json", "items.json")
+    with open(path) as source:
+        return {name for item in json.load(source)["items"] for name in item.get("pieces", [])}
+
+
+def piece(name, variant="", collect=None):
     """The boxes of a piece of the kit, in one of its colours. Each call is one instance, and its
     boxes carry that instance's number (`part`), so `parts_of` can tell the pieces an entity was
-    assembled from once `moved`, `turned` and `spun` have put them in place."""
+    assembled from once `moved`, `turned` and `spun` have put them in place. `collect` says whether
+    the piece stays floating as an item to pick up when the entity is gathered (written to its
+    `.parts.json`); by default it does when some item is made of that piece."""
     build, variants = PIECES[name]
-    _PLACED[len(_PLACED) + 1] = (name, variant)
+    _PLACED[len(_PLACED) + 1] = (name, variant, collect)
     return [dict(b, part=len(_PLACED)) for b in build(variants[variant])]
 
 
@@ -722,9 +735,9 @@ def parts_of(boxes):
         lo = [min(b["c"][a] - b["h"][a] for b in group) for a in range(3)]
         hi = [max(b["c"][a] + b["h"][a] for b in group) for a in range(2)]
         at = ((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, lo[2])
-        name, variant = _PLACED[key] if key > 0 else ("box", "")
+        name, variant, collect = _PLACED[key] if key > 0 else ("box", "", None)
         parts.append(dict(
-            piece=name, variant=variant, at=[_voxels(v) for v in at],
+            piece=name, variant=variant, collect=(name in _collectable()) if collect is None else collect, at=[_voxels(v) for v in at],
             boxes=[dict(c=[_voxels(b["c"][a] - at[a]) for a in range(3)],
                         h=[_voxels(b["h"][a]) for a in range(3)],
                         r=_voxels(b["r"]),

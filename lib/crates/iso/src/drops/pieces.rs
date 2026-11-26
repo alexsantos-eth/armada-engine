@@ -34,7 +34,7 @@ impl PiecePlan {
 }
 
 /// Picks, for each item of `yields`, up to as many pieces of `parts` as it has units (never more
-/// than [`MAX_PIECE_DROPS`] in all) among the ones the item's `pieces` name, chosen by the stream
+/// than [`MAX_PIECE_DROPS`] in all) among the collectable ones (`Part::collect`) the item's `pieces` name, chosen by the stream
 /// of `seed`; each is one unit, so the parts cap what an entity gives.
 pub fn plan_pieces(
     parts: &EntityParts,
@@ -51,7 +51,9 @@ pub fn plan_pieces(
             .map_or(&[][..], |item| &item.pieces[..]);
         let mut candidates: Vec<usize> = (0..parts.parts.len())
             .filter(|&index| {
-                !taken[index] && names.iter().any(|name| *name == parts.parts[index].piece)
+                !taken[index]
+                    && parts.parts[index].collect
+                    && names.iter().any(|name| *name == parts.parts[index].piece)
             })
             .collect();
         if candidates.is_empty() {

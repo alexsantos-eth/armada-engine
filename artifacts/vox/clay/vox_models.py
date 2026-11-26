@@ -26,8 +26,8 @@ PLUS = [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)]
 QUAD = [(-.5, -.5), (.5, -.5), (-.5, .5), (.5, .5)]                            # 2x2
 
 
-def put(name, x, y, z, variant="", turn=False):
-    boxes = piece(name, variant)
+def put(name, x, y, z, variant="", turn=False, collect=None):
+    boxes = piece(name, variant, collect)
     return moved(turned(boxes) if turn else boxes, x, y, z)
 
 
@@ -582,11 +582,13 @@ def palm_grove_2(axis):
 
 # ------------------------------------------------------------------------ the open field
 def mushrooms():
-    """mushrooms: three clumps of toadstools and small mushrooms on moss, low enough to walk over."""
-    out = put("toadstool", -22, -20, 0, "red") + put("mushroom", -4, -32, 0) + put("mushroom", -36, -4, 0)
+    """mushrooms: three clumps of toadstools and small mushrooms on moss, low enough to walk over.
+    Only the big toadstools are collectable: the small mushrooms are scenery."""
+    small = dict(collect=False)
+    out = put("toadstool", -22, -20, 0, "red") + put("mushroom", -4, -32, 0, **small) + put("mushroom", -36, -4, 0, **small)
     out += put("moss_patch", -20, -2, 0) + put("toadstool", -34, -36, 0, "red")
-    out += put("toadstool", 26, -8, 0, "tan") + put("mushroom", 38, 10, 0) + put("mushroom", 16, -26, 0)
-    out += put("toadstool", 4, 26, 0, "red") + put("mushroom", -12, 36, 0) + put("mushroom", 18, 38, 0)
+    out += put("toadstool", 26, -8, 0, "tan") + put("mushroom", 38, 10, 0, **small) + put("mushroom", 16, -26, 0, **small)
+    out += put("toadstool", 4, 26, 0, "red") + put("mushroom", -12, 36, 0, **small) + put("mushroom", 18, 38, 0, **small)
     return out + put("fallen_leaf", 34, 34, 0, "ochre") + put("fallen_leaf", -38, 24, 0, "rust")
 
 

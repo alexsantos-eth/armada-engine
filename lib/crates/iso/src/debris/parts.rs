@@ -28,6 +28,9 @@ pub struct Part {
     /// Voxels along the model's x and y that a piece too wide for the 1x1x1 canvas was moved off
     /// the foot of its sprite when rendered; `[0, 0]` for the rest.
     pub shift: [f64; 2],
+    /// Whether the piece stays floating as an item to pick up when the entity is gathered, as its
+    /// `parts.json` says: scenery pieces (the small mushrooms of a patch) are not collectable.
+    pub collect: bool,
 }
 
 /// An entity as the pieces it is made of, in the order they were assembled.
@@ -65,6 +68,8 @@ struct RawPart {
     sprite: String,
     #[serde(default)]
     shift: [f64; 2],
+    #[serde(default)]
+    collect: bool,
 }
 
 #[derive(Deserialize)]
@@ -110,6 +115,7 @@ pub fn parse_parts(json: &str) -> Result<PartsCatalog, PartsError> {
                 at: part.at,
                 sprite: part.sprite,
                 shift: part.shift,
+                collect: part.collect,
             })
             .collect();
         entities.insert(

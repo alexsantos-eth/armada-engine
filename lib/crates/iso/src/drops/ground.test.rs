@@ -230,6 +230,7 @@ fn tree_parts() -> EntityParts {
         at,
         sprite: format!("debris/p_{piece}"),
         shift: [0.0, 0.0],
+        collect: true,
     };
     EntityParts {
         tiles: [1, 1, 2],

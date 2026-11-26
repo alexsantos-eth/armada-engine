@@ -19,6 +19,7 @@ fn parts(names: &[&str]) -> EntityParts {
                 at: [0.0, 0.0, 0.0],
                 sprite: format!("debris/p_{name}"),
                 shift: [0.0, 0.0],
+                collect: true,
             })
             .collect(),
     }
@@ -81,4 +82,30 @@ fn what_no_piece_stands_for_drops_as_plain_heaps() {
             amount: 1
         }]
     );
+}
+
+#[test]
+fn only_the_pieces_the_parts_mark_as_collectable_can_be_picked() {
+    let mut parts = parts(&["trunk", "trunk", "trunk", "trunk"]);
+    parts.parts[1].collect = false;
+    parts.parts[3].collect = false;
+    for seed in 0..20 {
+        let plan = plan_pieces(&parts, &[gain("wood", 4)], &items(), seed);
+        let mut chosen = plan.parts();
+        chosen.sort_unstable();
+        assert_eq!(chosen, [0, 2], "seed {seed}");
+        assert!(
+            plan.rest.is_empty(),
+            "the entity does have collectable pieces"
+        );
+    }
+}
+
+#[test]
+fn an_entity_without_collectable_pieces_drops_plain_heaps() {
+    let mut parts = parts(&["trunk"]);
+    parts.parts[0].collect = false;
+    let plan = plan_pieces(&parts, &[gain("wood", 2)], &items(), 1);
+    assert!(plan.picks.is_empty());
+    assert_eq!(plan.rest, [gain("wood", 2)]);
 }

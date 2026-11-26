@@ -9,6 +9,7 @@ fn tree() -> EntityParts {
         at,
         sprite: sprite.into(),
         shift: [0.0, 0.0],
+        collect: true,
     };
     EntityParts {
         tiles: [1, 1, 2],
