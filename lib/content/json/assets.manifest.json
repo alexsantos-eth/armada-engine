@@ -5,7 +5,7 @@
     "x": 0,
     "y": 0,
     "width": 4096,
-    "height": 3495
+    "height": 3644
   },
   "entries": [
     {
@@ -39,7 +39,7 @@
       "source": "/assets/animated/block_fly_swarm.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 2833,
+        "x": 3568,
         "y": 3375,
         "width": 187,
         "height": 78
@@ -64,7 +64,7 @@
       "source": "/assets/animated/block_fly_swarm_bones.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3021,
+        "x": 3756,
         "y": 3375,
         "width": 174,
         "height": 78
@@ -89,7 +89,7 @@
       "source": "/assets/animated/block_fly_swarm_sand.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1697,
+        "x": 2254,
         "y": 3375,
         "width": 117,
         "height": 101
@@ -114,7 +114,7 @@
       "source": "/assets/animated/block_geyser.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1186,
+        "x": 1743,
         "y": 3375,
         "width": 180,
         "height": 104
@@ -164,7 +164,7 @@
       "source": "/assets/animated/block_leaf_emitter.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1973,
+        "x": 2530,
         "y": 3375,
         "width": 176,
         "height": 94
@@ -189,7 +189,7 @@
       "source": "/assets/animated/block_ritual_candles.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 794,
+        "x": 1351,
         "y": 3375,
         "width": 181,
         "height": 108
@@ -314,8 +314,8 @@
       "source": "/assets/barren/block_bone_pile.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3865,
-        "y": 3214,
+        "x": 354,
+        "y": 3375,
         "width": 203,
         "height": 119
       },
@@ -339,7 +339,7 @@
       "source": "/assets/barren/block_burrow.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1367,
+        "x": 1924,
         "y": 3375,
         "width": 199,
         "height": 104
@@ -364,7 +364,7 @@
       "source": "/assets/barren/block_cairn.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 204,
+        "x": 761,
         "y": 3375,
         "width": 154,
         "height": 114
@@ -439,7 +439,7 @@
       "source": "/assets/barren/block_dry_grass.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 976,
+        "x": 1533,
         "y": 3375,
         "width": 209,
         "height": 105
@@ -464,7 +464,7 @@
       "source": "/assets/barren/block_dry_grass_2.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1,
+        "x": 558,
         "y": 3375,
         "width": 202,
         "height": 119
@@ -939,7 +939,7 @@
       "source": "/assets/barren/block_rubble.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 591,
+        "x": 1148,
         "y": 3375,
         "width": 202,
         "height": 109
@@ -1014,7 +1014,7 @@
       "source": "/assets/barren/block_skull_helmet.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 2305,
+        "x": 2951,
         "y": 3375,
         "width": 150,
         "height": 88
@@ -1114,7 +1114,7 @@
       "source": "/assets/beach/block_beach_rocks.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 359,
+        "x": 916,
         "y": 3375,
         "width": 231,
         "height": 110
@@ -1139,8 +1139,8 @@
       "source": "/assets/beach/block_coconuts.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3196,
-        "y": 3375,
+        "x": 256,
+        "y": 3500,
         "width": 141,
         "height": 72
       },
@@ -1164,7 +1164,7 @@
       "source": "/assets/beach/block_driftwood.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 2456,
+        "x": 3191,
         "y": 3375,
         "width": 134,
         "height": 87
@@ -1714,7 +1714,7 @@
       "source": "/assets/building/block_campfire.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 2591,
+        "x": 3326,
         "y": 3375,
         "width": 158,
         "height": 86
@@ -1839,8 +1839,8 @@
       "source": "/assets/building/block_runestone.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3723,
-        "y": 3214,
+        "x": 212,
+        "y": 3375,
         "width": 141,
         "height": 121
       },
@@ -1889,7 +1889,7 @@
       "source": "/assets/building/block_runestone_fallen.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1567,
+        "x": 2124,
         "y": 3375,
         "width": 129,
         "height": 102
@@ -3841,6 +3841,4431 @@
       "sway": null
     },
     {
+      "id": "debris_p_00acbf8659",
+      "kind": "entity",
+      "source": "/assets/debris/p_00acbf8659.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 556,
+        "y": 3622,
+        "width": 12,
+        "height": 15
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.01875,
+        "y": -0.037029,
+        "width": 0.0375,
+        "height": 0.046798
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_01ca75a726",
+      "kind": "entity",
+      "source": "/assets/debris/p_01ca75a726.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 797,
+        "y": 3575,
+        "width": 68,
+        "height": 43
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.10625,
+        "y": -0.086947,
+        "width": 0.2125,
+        "height": 0.134155
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_02b632c412",
+      "kind": "entity",
+      "source": "/assets/debris/p_02b632c412.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1519,
+        "y": 3575,
+        "width": 42,
+        "height": 39
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.06875,
+        "y": -0.102546,
+        "width": 0.13125,
+        "height": 0.121675
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_031c7171df",
+      "kind": "entity",
+      "source": "/assets/debris/p_031c7171df.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1883,
+        "y": 3500,
+        "width": 89,
+        "height": 57
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.13125,
+        "y": -0.118146,
+        "width": 0.278125,
+        "height": 0.177833
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_03e275dfe1",
+      "kind": "entity",
+      "source": "/assets/debris/p_03e275dfe1.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3931,
+        "y": 3375,
+        "width": 84,
+        "height": 74
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.125,
+        "y": -0.168064,
+        "width": 0.2625,
+        "height": 0.230871
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_04632cf3a6",
+      "kind": "entity",
+      "source": "/assets/debris/p_04632cf3a6.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 866,
+        "y": 3575,
+        "width": 68,
+        "height": 43
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.10625,
+        "y": -0.086947,
+        "width": 0.2125,
+        "height": 0.134155
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_07e5c7fef2",
+      "kind": "entity",
+      "source": "/assets/debris/p_07e5c7fef2.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 338,
+        "y": 3622,
+        "width": 24,
+        "height": 17
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.0375,
+        "y": -0.033909,
+        "width": 0.075,
+        "height": 0.053038
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_0ea8f8f74b",
+      "kind": "entity",
+      "source": "/assets/debris/p_0ea8f8f74b.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2261,
+        "y": 3575,
+        "width": 35,
+        "height": 34
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05625,
+        "y": -0.080707,
+        "width": 0.109375,
+        "height": 0.106076
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_111dc42f33",
+      "kind": "entity",
+      "source": "/assets/debris/p_111dc42f33.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3797,
+        "y": 3500,
+        "width": 49,
+        "height": 46
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.078125,
+        "y": -0.111906,
+        "width": 0.153125,
+        "height": 0.143514
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_113ea43caf",
+      "kind": "entity",
+      "source": "/assets/debris/p_113ea43caf.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1802,
+        "y": 3575,
+        "width": 44,
+        "height": 38
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.06875,
+        "y": -0.083827,
+        "width": 0.1375,
+        "height": 0.118555
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_1475490901",
+      "kind": "entity",
+      "source": "/assets/debris/p_1475490901.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 160,
+        "y": 3622,
+        "width": 14,
+        "height": 18
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.021875,
+        "y": -0.046389,
+        "width": 0.04375,
+        "height": 0.056158
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_1600b5f542",
+      "kind": "entity",
+      "source": "/assets/debris/p_1600b5f542.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 398,
+        "y": 3500,
+        "width": 97,
+        "height": 72
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.153125,
+        "y": -0.161824,
+        "width": 0.303125,
+        "height": 0.224631
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_17216f69a1",
+      "kind": "entity",
+      "source": "/assets/debris/p_17216f69a1.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 597,
+        "y": 3575,
+        "width": 50,
+        "height": 44
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.078125,
+        "y": -0.115026,
+        "width": 0.15625,
+        "height": 0.137275
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_196831c000",
+      "kind": "entity",
+      "source": "/assets/debris/p_196831c000.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2399,
+        "y": 3500,
+        "width": 30,
+        "height": 56
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.046875,
+        "y": -0.136865,
+        "width": 0.09375,
+        "height": 0.174713
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_19eb5e8f34",
+      "kind": "entity",
+      "source": "/assets/debris/p_19eb5e8f34.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3302,
+        "y": 3575,
+        "width": 31,
+        "height": 30
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05,
+        "y": -0.077587,
+        "width": 0.096875,
+        "height": 0.093596
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_1ad9e7cac2",
+      "kind": "entity",
+      "source": "/assets/debris/p_1ad9e7cac2.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1562,
+        "y": 3575,
+        "width": 52,
+        "height": 39
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.08125,
+        "y": -0.083827,
+        "width": 0.1625,
+        "height": 0.121675
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_1c234fec79",
+      "kind": "entity",
+      "source": "/assets/debris/p_1c234fec79.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3847,
+        "y": 3575,
+        "width": 31,
+        "height": 22
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05,
+        "y": -0.065108,
+        "width": 0.096875,
+        "height": 0.068637
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_1cfbd2d587",
+      "kind": "entity",
+      "source": "/assets/debris/p_1cfbd2d587.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 569,
+        "y": 3622,
+        "width": 17,
+        "height": 15
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.033909,
+        "width": 0.053125,
+        "height": 0.046798
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_2035447926",
+      "kind": "entity",
+      "source": "/assets/debris/p_2035447926.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1,
+        "y": 3500,
+        "width": 84,
+        "height": 74
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1375,
+        "y": -0.168064,
+        "width": 0.2625,
+        "height": 0.230871
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_205a3ce89b",
+      "kind": "entity",
+      "source": "/assets/debris/p_205a3ce89b.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2943,
+        "y": 3500,
+        "width": 42,
+        "height": 53
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.0625,
+        "y": -0.130625,
+        "width": 0.13125,
+        "height": 0.165354
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_2169468282",
+      "kind": "entity",
+      "source": "/assets/debris/p_2169468282.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3879,
+        "y": 3575,
+        "width": 33,
+        "height": 22
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05,
+        "y": -0.065108,
+        "width": 0.103125,
+        "height": 0.068637
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_220104ac4b",
+      "kind": "entity",
+      "source": "/assets/debris/p_220104ac4b.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 4036,
+        "y": 3575,
+        "width": 33,
+        "height": 21
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.053125,
+        "y": -0.037029,
+        "width": 0.103125,
+        "height": 0.065517
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_25783a6eed",
+      "kind": "entity",
+      "source": "/assets/debris/p_25783a6eed.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3334,
+        "y": 3575,
+        "width": 58,
+        "height": 29
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.09375,
+        "y": -0.071348,
+        "width": 0.18125,
+        "height": 0.090477
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_26757184ee",
+      "kind": "entity",
+      "source": "/assets/debris/p_26757184ee.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3495,
+        "y": 3575,
+        "width": 40,
+        "height": 27
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.0625,
+        "y": -0.052628,
+        "width": 0.125,
+        "height": 0.084237
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_27ffc6f557",
+      "kind": "entity",
+      "source": "/assets/debris/p_27ffc6f557.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 86,
+        "y": 3500,
+        "width": 84,
+        "height": 74
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.125,
+        "y": -0.168064,
+        "width": 0.2625,
+        "height": 0.230871
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_28835782c9",
+      "kind": "entity",
+      "source": "/assets/debris/p_28835782c9.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 511,
+        "y": 3622,
+        "width": 12,
+        "height": 16
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.01875,
+        "y": -0.040149,
+        "width": 0.0375,
+        "height": 0.049918
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_2a669cb238",
+      "kind": "entity",
+      "source": "/assets/debris/p_2a669cb238.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3913,
+        "y": 3575,
+        "width": 31,
+        "height": 22
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05,
+        "y": -0.065108,
+        "width": 0.096875,
+        "height": 0.068637
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_2b564d9910",
+      "kind": "entity",
+      "source": "/assets/debris/p_2b564d9910.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 645,
+        "y": 3622,
+        "width": 12,
+        "height": 13
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.01875,
+        "y": -0.030789,
+        "width": 0.0375,
+        "height": 0.040558
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_2d38404003",
+      "kind": "entity",
+      "source": "/assets/debris/p_2d38404003.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3945,
+        "y": 3575,
+        "width": 29,
+        "height": 22
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.046875,
+        "y": -0.046389,
+        "width": 0.090625,
+        "height": 0.068637
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_2e10d9f8f5",
+      "kind": "entity",
+      "source": "/assets/debris/p_2e10d9f8f5.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 630,
+        "y": 3622,
+        "width": 14,
+        "height": 14
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.021875,
+        "y": -0.033909,
+        "width": 0.04375,
+        "height": 0.043678
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_2eaf86231f",
+      "kind": "entity",
+      "source": "/assets/debris/p_2eaf86231f.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 54,
+        "y": 3622,
+        "width": 18,
+        "height": 20
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.049508,
+        "width": 0.05625,
+        "height": 0.062398
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_30900a9ba6",
+      "kind": "entity",
+      "source": "/assets/debris/p_30900a9ba6.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 587,
+        "y": 3622,
+        "width": 14,
+        "height": 15
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.021875,
+        "y": -0.037029,
+        "width": 0.04375,
+        "height": 0.046798
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_314dc63ff0",
+      "kind": "entity",
+      "source": "/assets/debris/p_314dc63ff0.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1395,
+        "y": 3500,
+        "width": 64,
+        "height": 61
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1,
+        "y": -0.146225,
+        "width": 0.2,
+        "height": 0.190313
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_319e916e28",
+      "kind": "entity",
+      "source": "/assets/debris/p_319e916e28.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3393,
+        "y": 3575,
+        "width": 28,
+        "height": 29
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.04375,
+        "y": -0.068228,
+        "width": 0.0875,
+        "height": 0.090477
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_335fab7dcb",
+      "kind": "entity",
+      "source": "/assets/debris/p_335fab7dcb.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 363,
+        "y": 3622,
+        "width": 20,
+        "height": 17
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.03125,
+        "y": -0.037029,
+        "width": 0.0625,
+        "height": 0.053038
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_33f14559c5",
+      "kind": "entity",
+      "source": "/assets/debris/p_33f14559c5.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1008,
+        "y": 3500,
+        "width": 74,
+        "height": 62
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.115625,
+        "y": -0.143105,
+        "width": 0.23125,
+        "height": 0.193433
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_34d624b3ac",
+      "kind": "entity",
+      "source": "/assets/debris/p_34d624b3ac.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2995,
+        "y": 3575,
+        "width": 64,
+        "height": 31
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1,
+        "y": -0.080707,
+        "width": 0.2,
+        "height": 0.096716
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_35f3cf0368",
+      "kind": "entity",
+      "source": "/assets/debris/p_35f3cf0368.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 175,
+        "y": 3622,
+        "width": 14,
+        "height": 18
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.021875,
+        "y": -0.046389,
+        "width": 0.04375,
+        "height": 0.056158
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_3651fa932a",
+      "kind": "entity",
+      "source": "/assets/debris/p_3651fa932a.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 190,
+        "y": 3622,
+        "width": 12,
+        "height": 18
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.01875,
+        "y": -0.046389,
+        "width": 0.0375,
+        "height": 0.056158
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_37185d5782",
+      "kind": "entity",
+      "source": "/assets/debris/p_37185d5782.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1973,
+        "y": 3500,
+        "width": 89,
+        "height": 57
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.140625,
+        "y": -0.111906,
+        "width": 0.278125,
+        "height": 0.177833
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_39d6824f00",
+      "kind": "entity",
+      "source": "/assets/debris/p_39d6824f00.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2855,
+        "y": 3500,
+        "width": 43,
+        "height": 54
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.06875,
+        "y": -0.133745,
+        "width": 0.134375,
+        "height": 0.168473
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_3ac4b2c4cd",
+      "kind": "entity",
+      "source": "/assets/debris/p_3ac4b2c4cd.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3060,
+        "y": 3575,
+        "width": 36,
+        "height": 31
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05625,
+        "y": -0.074467,
+        "width": 0.1125,
+        "height": 0.096716
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_3bd09081b0",
+      "kind": "entity",
+      "source": "/assets/debris/p_3bd09081b0.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1615,
+        "y": 3575,
+        "width": 42,
+        "height": 39
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.06875,
+        "y": -0.102546,
+        "width": 0.13125,
+        "height": 0.121675
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_3c9a013133",
+      "kind": "entity",
+      "source": "/assets/debris/p_3c9a013133.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 468,
+        "y": 3575,
+        "width": 18,
+        "height": 45
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.127505,
+        "width": 0.05625,
+        "height": 0.140395
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_3cf17b821b",
+      "kind": "entity",
+      "source": "/assets/debris/p_3cf17b821b.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3847,
+        "y": 3500,
+        "width": 57,
+        "height": 46
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.09375,
+        "y": -0.099426,
+        "width": 0.178125,
+        "height": 0.143514
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_3daa9f8541",
+      "kind": "entity",
+      "source": "/assets/debris/p_3daa9f8541.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2430,
+        "y": 3500,
+        "width": 30,
+        "height": 56
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.046875,
+        "y": -0.136865,
+        "width": 0.09375,
+        "height": 0.174713
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_419c84f63c",
+      "kind": "entity",
+      "source": "/assets/debris/p_419c84f63c.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2208,
+        "y": 3575,
+        "width": 52,
+        "height": 35
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.08125,
+        "y": -0.071348,
+        "width": 0.1625,
+        "height": 0.109196
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_47ceba325e",
+      "kind": "entity",
+      "source": "/assets/debris/p_47ceba325e.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2058,
+        "y": 3575,
+        "width": 49,
+        "height": 36
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.078125,
+        "y": -0.077587,
+        "width": 0.153125,
+        "height": 0.112316
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_4a15d90600",
+      "kind": "entity",
+      "source": "/assets/debris/p_4a15d90600.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 203,
+        "y": 3622,
+        "width": 12,
+        "height": 18
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.01875,
+        "y": -0.046389,
+        "width": 0.0375,
+        "height": 0.056158
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_4c6899cbae",
+      "kind": "entity",
+      "source": "/assets/debris/p_4c6899cbae.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 73,
+        "y": 3622,
+        "width": 18,
+        "height": 20
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.049508,
+        "width": 0.05625,
+        "height": 0.062398
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_4cec0d83c5",
+      "kind": "entity",
+      "source": "/assets/debris/p_4cec0d83c5.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3536,
+        "y": 3575,
+        "width": 40,
+        "height": 27
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.0625,
+        "y": -0.052628,
+        "width": 0.125,
+        "height": 0.084237
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_4d2907c1d5",
+      "kind": "entity",
+      "source": "/assets/debris/p_4d2907c1d5.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2573,
+        "y": 3575,
+        "width": 44,
+        "height": 32
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.06875,
+        "y": -0.065108,
+        "width": 0.1375,
+        "height": 0.099836
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_4d7206bd36",
+      "kind": "entity",
+      "source": "/assets/debris/p_4d7206bd36.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1083,
+        "y": 3500,
+        "width": 74,
+        "height": 62
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.115625,
+        "y": -0.143105,
+        "width": 0.23125,
+        "height": 0.193433
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_4e955f9a20",
+      "kind": "entity",
+      "source": "/assets/debris/p_4e955f9a20.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 384,
+        "y": 3622,
+        "width": 14,
+        "height": 17
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.021875,
+        "y": -0.043269,
+        "width": 0.04375,
+        "height": 0.053038
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_4ea9eb9125",
+      "kind": "entity",
+      "source": "/assets/debris/p_4ea9eb9125.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3905,
+        "y": 3500,
+        "width": 65,
+        "height": 46
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.103125,
+        "y": -0.096307,
+        "width": 0.203125,
+        "height": 0.143514
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_4fb8bbb960",
+      "kind": "entity",
+      "source": "/assets/debris/p_4fb8bbb960.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3614,
+        "y": 3500,
+        "width": 26,
+        "height": 48
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.040625,
+        "y": -0.130625,
+        "width": 0.08125,
+        "height": 0.149754
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_51697d154b",
+      "kind": "entity",
+      "source": "/assets/debris/p_51697d154b.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 111,
+        "y": 3622,
+        "width": 14,
+        "height": 19
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.021875,
+        "y": -0.049508,
+        "width": 0.04375,
+        "height": 0.059278
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_5227a219ed",
+      "kind": "entity",
+      "source": "/assets/debris/p_5227a219ed.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 648,
+        "y": 3575,
+        "width": 50,
+        "height": 44
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.078125,
+        "y": -0.115026,
+        "width": 0.15625,
+        "height": 0.137275
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_53a736a2e8",
+      "kind": "entity",
+      "source": "/assets/debris/p_53a736a2e8.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1424,
+        "y": 3575,
+        "width": 44,
+        "height": 40
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.06875,
+        "y": -0.086947,
+        "width": 0.1375,
+        "height": 0.124795
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_54682b2deb",
+      "kind": "entity",
+      "source": "/assets/debris/p_54682b2deb.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2862,
+        "y": 3375,
+        "width": 88,
+        "height": 90
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.134375,
+        "y": -0.236701,
+        "width": 0.275,
+        "height": 0.280789
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_553dd3a511",
+      "kind": "entity",
+      "source": "/assets/debris/p_553dd3a511.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1,
+        "y": 3622,
+        "width": 33,
+        "height": 21
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.053125,
+        "y": -0.037029,
+        "width": 0.103125,
+        "height": 0.065517
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_561f473917",
+      "kind": "entity",
+      "source": "/assets/debris/p_561f473917.png",
+      "dataTiles": "2x2x1",
+      "frame": {
+        "x": 3723,
+        "y": 3214,
+        "width": 212,
+        "height": 124
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.83125,
+        "y": -0.230501,
+        "width": 0.6625,
+        "height": 0.387103
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_59a204e6bf",
+      "kind": "entity",
+      "source": "/assets/debris/p_59a204e6bf.png",
+      "dataTiles": "2x2x1",
+      "frame": {
+        "x": 1,
+        "y": 3375,
+        "width": 210,
+        "height": 124
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.828125,
+        "y": -0.230501,
+        "width": 0.65625,
+        "height": 0.387103
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_5bb9937f2d",
+      "kind": "entity",
+      "source": "/assets/debris/p_5bb9937f2d.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1658,
+        "y": 3575,
+        "width": 59,
+        "height": 39
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.096875,
+        "y": -0.077587,
+        "width": 0.184375,
+        "height": 0.121675
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_5f5bad9893",
+      "kind": "entity",
+      "source": "/assets/debris/p_5f5bad9893.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3641,
+        "y": 3500,
+        "width": 26,
+        "height": 48
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.040625,
+        "y": -0.130625,
+        "width": 0.08125,
+        "height": 0.149754
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_5f8fb595b7",
+      "kind": "entity",
+      "source": "/assets/debris/p_5f8fb595b7.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2063,
+        "y": 3500,
+        "width": 50,
+        "height": 57
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.078125,
+        "y": -0.143105,
+        "width": 0.15625,
+        "height": 0.177833
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_63088a47c2",
+      "kind": "entity",
+      "source": "/assets/debris/p_63088a47c2.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1109,
+        "y": 3575,
+        "width": 62,
+        "height": 41
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.096875,
+        "y": -0.080707,
+        "width": 0.19375,
+        "height": 0.127915
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_64cd19ec6a",
+      "kind": "entity",
+      "source": "/assets/debris/p_64cd19ec6a.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2986,
+        "y": 3500,
+        "width": 62,
+        "height": 53
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.096875,
+        "y": -0.149345,
+        "width": 0.19375,
+        "height": 0.165354
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_655d0442ba",
+      "kind": "entity",
+      "source": "/assets/debris/p_655d0442ba.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1158,
+        "y": 3500,
+        "width": 74,
+        "height": 62
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.115625,
+        "y": -0.143105,
+        "width": 0.23125,
+        "height": 0.193433
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_658c34ed40",
+      "kind": "entity",
+      "source": "/assets/debris/p_658c34ed40.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3049,
+        "y": 3500,
+        "width": 38,
+        "height": 53
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.059375,
+        "y": -0.136865,
+        "width": 0.11875,
+        "height": 0.165354
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_674067d8a5",
+      "kind": "entity",
+      "source": "/assets/debris/p_674067d8a5.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2618,
+        "y": 3575,
+        "width": 84,
+        "height": 32
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.125,
+        "y": -0.105666,
+        "width": 0.2625,
+        "height": 0.099836
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_67788f2218",
+      "kind": "entity",
+      "source": "/assets/debris/p_67788f2218.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 496,
+        "y": 3500,
+        "width": 97,
+        "height": 72
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.153125,
+        "y": -0.161824,
+        "width": 0.303125,
+        "height": 0.224631
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_67a6ecc17c",
+      "kind": "entity",
+      "source": "/assets/debris/p_67a6ecc17c.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1847,
+        "y": 3575,
+        "width": 42,
+        "height": 38
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.065625,
+        "y": -0.086947,
+        "width": 0.13125,
+        "height": 0.118555
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_67ce5bb465",
+      "kind": "entity",
+      "source": "/assets/debris/p_67ce5bb465.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3310,
+        "y": 3500,
+        "width": 36,
+        "height": 52
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05625,
+        "y": -0.155584,
+        "width": 0.1125,
+        "height": 0.162234
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_680a38900c",
+      "kind": "entity",
+      "source": "/assets/debris/p_680a38900c.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3088,
+        "y": 3500,
+        "width": 38,
+        "height": 53
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.059375,
+        "y": -0.136865,
+        "width": 0.11875,
+        "height": 0.165354
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_681e0cd13c",
+      "kind": "entity",
+      "source": "/assets/debris/p_681e0cd13c.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 399,
+        "y": 3622,
+        "width": 20,
+        "height": 17
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.03125,
+        "y": -0.037029,
+        "width": 0.0625,
+        "height": 0.053038
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_6b852a3b7a",
+      "kind": "entity",
+      "source": "/assets/debris/p_6b852a3b7a.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3127,
+        "y": 3500,
+        "width": 38,
+        "height": 53
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.059375,
+        "y": -0.136865,
+        "width": 0.11875,
+        "height": 0.165354
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_6c32bef8b1",
+      "kind": "entity",
+      "source": "/assets/debris/p_6c32bef8b1.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 811,
+        "y": 3500,
+        "width": 97,
+        "height": 64
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.15,
+        "y": -0.130625,
+        "width": 0.303125,
+        "height": 0.199672
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_6f6139feec",
+      "kind": "entity",
+      "source": "/assets/debris/p_6f6139feec.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2703,
+        "y": 3575,
+        "width": 84,
+        "height": 32
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.125,
+        "y": -0.105666,
+        "width": 0.2625,
+        "height": 0.099836
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_6fd39b5717",
+      "kind": "entity",
+      "source": "/assets/debris/p_6fd39b5717.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 420,
+        "y": 3622,
+        "width": 14,
+        "height": 17
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.021875,
+        "y": -0.043269,
+        "width": 0.04375,
+        "height": 0.053038
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_71b9f179d5",
+      "kind": "entity",
+      "source": "/assets/debris/p_71b9f179d5.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2297,
+        "y": 3575,
+        "width": 14,
+        "height": 34
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.021875,
+        "y": -0.096307,
+        "width": 0.04375,
+        "height": 0.106076
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_76a77893fc",
+      "kind": "entity",
+      "source": "/assets/debris/p_76a77893fc.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3477,
+        "y": 3500,
+        "width": 70,
+        "height": 51
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.109375,
+        "y": -0.115026,
+        "width": 0.21875,
+        "height": 0.159114
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_78450461fd",
+      "kind": "entity",
+      "source": "/assets/debris/p_78450461fd.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2483,
+        "y": 3575,
+        "width": 44,
+        "height": 33
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.06875,
+        "y": -0.068228,
+        "width": 0.1375,
+        "height": 0.102956
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_7930c7c6ae",
+      "kind": "entity",
+      "source": "/assets/debris/p_7930c7c6ae.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 35,
+        "y": 3622,
+        "width": 18,
+        "height": 21
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.052628,
+        "width": 0.05625,
+        "height": 0.065517
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_7c136e9284",
+      "kind": "entity",
+      "source": "/assets/debris/p_7c136e9284.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3971,
+        "y": 3500,
+        "width": 104,
+        "height": 46
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1625,
+        "y": -0.130625,
+        "width": 0.325,
+        "height": 0.143514
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_7cde893a08",
+      "kind": "entity",
+      "source": "/assets/debris/p_7cde893a08.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3102,
+        "y": 3375,
+        "width": 88,
+        "height": 88
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.140625,
+        "y": -0.233581,
+        "width": 0.275,
+        "height": 0.274549
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_7d90e4af7d",
+      "kind": "entity",
+      "source": "/assets/debris/p_7d90e4af7d.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2899,
+        "y": 3500,
+        "width": 43,
+        "height": 54
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.06875,
+        "y": -0.133745,
+        "width": 0.134375,
+        "height": 0.168473
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_7e0077e72b",
+      "kind": "entity",
+      "source": "/assets/debris/p_7e0077e72b.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 524,
+        "y": 3622,
+        "width": 18,
+        "height": 16
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.037029,
+        "width": 0.05625,
+        "height": 0.049918
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_7f3064e489",
+      "kind": "entity",
+      "source": "/assets/debris/p_7f3064e489.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2461,
+        "y": 3500,
+        "width": 89,
+        "height": 56
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.146875,
+        "y": -0.115026,
+        "width": 0.278125,
+        "height": 0.174713
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_8433472b1a",
+      "kind": "entity",
+      "source": "/assets/debris/p_8433472b1a.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1,
+        "y": 3575,
+        "width": 105,
+        "height": 46
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.165625,
+        "y": -0.130625,
+        "width": 0.328125,
+        "height": 0.143514
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_85199894c4",
+      "kind": "entity",
+      "source": "/assets/debris/p_85199894c4.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3577,
+        "y": 3575,
+        "width": 12,
+        "height": 26
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.01875,
+        "y": -0.071348,
+        "width": 0.0375,
+        "height": 0.081117
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_86b5c6d5c5",
+      "kind": "entity",
+      "source": "/assets/debris/p_86b5c6d5c5.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1590,
+        "y": 3500,
+        "width": 62,
+        "height": 59
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.096875,
+        "y": -0.143105,
+        "width": 0.19375,
+        "height": 0.184073
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_86fc8b60e3",
+      "kind": "entity",
+      "source": "/assets/debris/p_86fc8b60e3.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1890,
+        "y": 3575,
+        "width": 39,
+        "height": 38
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.059375,
+        "y": -0.111906,
+        "width": 0.121875,
+        "height": 0.118555
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_87cc2b323f",
+      "kind": "entity",
+      "source": "/assets/debris/p_87cc2b323f.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 107,
+        "y": 3575,
+        "width": 49,
+        "height": 46
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.078125,
+        "y": -0.111906,
+        "width": 0.153125,
+        "height": 0.143514
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_8ab9725af5",
+      "kind": "entity",
+      "source": "/assets/debris/p_8ab9725af5.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3765,
+        "y": 3575,
+        "width": 30,
+        "height": 23
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.046875,
+        "y": -0.052628,
+        "width": 0.09375,
+        "height": 0.071757
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_8bb8bc21d5",
+      "kind": "entity",
+      "source": "/assets/debris/p_8bb8bc21d5.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1970,
+        "y": 3575,
+        "width": 43,
+        "height": 37
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.065625,
+        "y": -0.099426,
+        "width": 0.134375,
+        "height": 0.115436
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_8c4178efdd",
+      "kind": "entity",
+      "source": "/assets/debris/p_8c4178efdd.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3737,
+        "y": 3575,
+        "width": 27,
+        "height": 24
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.04375,
+        "y": -0.058868,
+        "width": 0.084375,
+        "height": 0.074877
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_8c43f8e22d",
+      "kind": "entity",
+      "source": "/assets/debris/p_8c43f8e22d.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1842,
+        "y": 3500,
+        "width": 40,
+        "height": 58
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.0625,
+        "y": -0.161824,
+        "width": 0.125,
+        "height": 0.180953
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_8caab76325",
+      "kind": "entity",
+      "source": "/assets/debris/p_8caab76325.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3975,
+        "y": 3575,
+        "width": 33,
+        "height": 22
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05,
+        "y": -0.065108,
+        "width": 0.103125,
+        "height": 0.068637
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_8d888712b2",
+      "kind": "entity",
+      "source": "/assets/debris/p_8d888712b2.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 216,
+        "y": 3622,
+        "width": 26,
+        "height": 18
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.040625,
+        "y": -0.033909,
+        "width": 0.08125,
+        "height": 0.056158
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_8eb38514f2",
+      "kind": "entity",
+      "source": "/assets/debris/p_8eb38514f2.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3668,
+        "y": 3500,
+        "width": 26,
+        "height": 48
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.040625,
+        "y": -0.130625,
+        "width": 0.08125,
+        "height": 0.149754
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_8ee6876135",
+      "kind": "entity",
+      "source": "/assets/debris/p_8ee6876135.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 157,
+        "y": 3575,
+        "width": 104,
+        "height": 46
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1625,
+        "y": -0.130625,
+        "width": 0.325,
+        "height": 0.143514
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_90b98e5e64",
+      "kind": "entity",
+      "source": "/assets/debris/p_90b98e5e64.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3590,
+        "y": 3575,
+        "width": 23,
+        "height": 26
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.034375,
+        "y": -0.071348,
+        "width": 0.071875,
+        "height": 0.081117
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_91840296e4",
+      "kind": "entity",
+      "source": "/assets/debris/p_91840296e4.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 602,
+        "y": 3622,
+        "width": 12,
+        "height": 15
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.01875,
+        "y": -0.037029,
+        "width": 0.0375,
+        "height": 0.046798
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_92ed483c61",
+      "kind": "entity",
+      "source": "/assets/debris/p_92ed483c61.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 243,
+        "y": 3622,
+        "width": 12,
+        "height": 18
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.01875,
+        "y": -0.046389,
+        "width": 0.0375,
+        "height": 0.056158
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_93a4409982",
+      "kind": "entity",
+      "source": "/assets/debris/p_93a4409982.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 126,
+        "y": 3622,
+        "width": 14,
+        "height": 19
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.021875,
+        "y": -0.049508,
+        "width": 0.04375,
+        "height": 0.059278
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_9452fd275e",
+      "kind": "entity",
+      "source": "/assets/debris/p_9452fd275e.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2788,
+        "y": 3575,
+        "width": 64,
+        "height": 32
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1,
+        "y": -0.080707,
+        "width": 0.2,
+        "height": 0.099836
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_962f3e5d68",
+      "kind": "entity",
+      "source": "/assets/debris/p_962f3e5d68.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 4009,
+        "y": 3575,
+        "width": 26,
+        "height": 22
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.040625,
+        "y": -0.058868,
+        "width": 0.08125,
+        "height": 0.068637
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_9713f50653",
+      "kind": "entity",
+      "source": "/assets/debris/p_9713f50653.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1930,
+        "y": 3575,
+        "width": 39,
+        "height": 38
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.059375,
+        "y": -0.111906,
+        "width": 0.121875,
+        "height": 0.118555
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_9b651f5189",
+      "kind": "entity",
+      "source": "/assets/debris/p_9b651f5189.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3614,
+        "y": 3575,
+        "width": 23,
+        "height": 26
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.034375,
+        "y": -0.071348,
+        "width": 0.071875,
+        "height": 0.081117
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_9c10ce2e92",
+      "kind": "entity",
+      "source": "/assets/debris/p_9c10ce2e92.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3796,
+        "y": 3575,
+        "width": 18,
+        "height": 23
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.058868,
+        "width": 0.05625,
+        "height": 0.071757
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_9de8e8727e",
+      "kind": "entity",
+      "source": "/assets/debris/p_9de8e8727e.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 262,
+        "y": 3575,
+        "width": 49,
+        "height": 46
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.078125,
+        "y": -0.111906,
+        "width": 0.153125,
+        "height": 0.143514
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_a65228027d",
+      "kind": "entity",
+      "source": "/assets/debris/p_a65228027d.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3638,
+        "y": 3575,
+        "width": 32,
+        "height": 25
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05,
+        "y": -0.055748,
+        "width": 0.1,
+        "height": 0.077997
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_a80851057b",
+      "kind": "entity",
+      "source": "/assets/debris/p_a80851057b.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 312,
+        "y": 3575,
+        "width": 49,
+        "height": 46
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.078125,
+        "y": -0.111906,
+        "width": 0.153125,
+        "height": 0.143514
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_a82002b327",
+      "kind": "entity",
+      "source": "/assets/debris/p_a82002b327.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3166,
+        "y": 3500,
+        "width": 42,
+        "height": 53
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.0625,
+        "y": -0.130625,
+        "width": 0.13125,
+        "height": 0.165354
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_a9bd501ddc",
+      "kind": "entity",
+      "source": "/assets/debris/p_a9bd501ddc.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 435,
+        "y": 3622,
+        "width": 18,
+        "height": 17
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.040149,
+        "width": 0.05625,
+        "height": 0.053038
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_aa87b08405",
+      "kind": "entity",
+      "source": "/assets/debris/p_aa87b08405.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2528,
+        "y": 3575,
+        "width": 44,
+        "height": 33
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.06875,
+        "y": -0.068228,
+        "width": 0.1375,
+        "height": 0.102956
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_aaea481496",
+      "kind": "entity",
+      "source": "/assets/debris/p_aaea481496.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 256,
+        "y": 3622,
+        "width": 24,
+        "height": 18
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.0375,
+        "y": -0.037029,
+        "width": 0.075,
+        "height": 0.056158
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_ad5f528d50",
+      "kind": "entity",
+      "source": "/assets/debris/p_ad5f528d50.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 454,
+        "y": 3622,
+        "width": 18,
+        "height": 17
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.040149,
+        "width": 0.05625,
+        "height": 0.053038
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_b28d7b616f",
+      "kind": "entity",
+      "source": "/assets/debris/p_b28d7b616f.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1653,
+        "y": 3500,
+        "width": 62,
+        "height": 59
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.096875,
+        "y": -0.143105,
+        "width": 0.19375,
+        "height": 0.184073
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_b3370bdfab",
+      "kind": "entity",
+      "source": "/assets/debris/p_b3370bdfab.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2312,
+        "y": 3575,
+        "width": 42,
+        "height": 34
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.065625,
+        "y": -0.080707,
+        "width": 0.13125,
+        "height": 0.106076
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_b367ba06a9",
+      "kind": "entity",
+      "source": "/assets/debris/p_b367ba06a9.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 281,
+        "y": 3622,
+        "width": 18,
+        "height": 18
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.043269,
+        "width": 0.05625,
+        "height": 0.056158
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_b695582a71",
+      "kind": "entity",
+      "source": "/assets/debris/p_b695582a71.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2551,
+        "y": 3500,
+        "width": 78,
+        "height": 56
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.121875,
+        "y": -0.152464,
+        "width": 0.24375,
+        "height": 0.174713
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_b6d8b1f5a8",
+      "kind": "entity",
+      "source": "/assets/debris/p_b6d8b1f5a8.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1172,
+        "y": 3575,
+        "width": 62,
+        "height": 41
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.096875,
+        "y": -0.080707,
+        "width": 0.19375,
+        "height": 0.127915
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_b6d8f1f88f",
+      "kind": "entity",
+      "source": "/assets/debris/p_b6d8f1f88f.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2114,
+        "y": 3500,
+        "width": 50,
+        "height": 57
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.078125,
+        "y": -0.143105,
+        "width": 0.15625,
+        "height": 0.177833
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_b7008382af",
+      "kind": "entity",
+      "source": "/assets/debris/p_b7008382af.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1718,
+        "y": 3575,
+        "width": 30,
+        "height": 39
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.046875,
+        "y": -0.105666,
+        "width": 0.09375,
+        "height": 0.121675
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_bc71a6db43",
+      "kind": "entity",
+      "source": "/assets/debris/p_bc71a6db43.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 300,
+        "y": 3622,
+        "width": 12,
+        "height": 18
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.01875,
+        "y": -0.046389,
+        "width": 0.0375,
+        "height": 0.056158
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_be5c28697a",
+      "kind": "entity",
+      "source": "/assets/debris/p_be5c28697a.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2630,
+        "y": 3500,
+        "width": 78,
+        "height": 56
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.121875,
+        "y": -0.152464,
+        "width": 0.24375,
+        "height": 0.174713
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_c0673c5788",
+      "kind": "entity",
+      "source": "/assets/debris/p_c0673c5788.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2853,
+        "y": 3575,
+        "width": 44,
+        "height": 32
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.06875,
+        "y": -0.065108,
+        "width": 0.1375,
+        "height": 0.099836
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_c36a5367d5",
+      "kind": "entity",
+      "source": "/assets/debris/p_c36a5367d5.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2355,
+        "y": 3575,
+        "width": 35,
+        "height": 34
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05625,
+        "y": -0.080707,
+        "width": 0.109375,
+        "height": 0.106076
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_c4016beb79",
+      "kind": "entity",
+      "source": "/assets/debris/p_c4016beb79.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2898,
+        "y": 3575,
+        "width": 51,
+        "height": 32
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.08125,
+        "y": -0.058868,
+        "width": 0.159375,
+        "height": 0.099836
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_c67ef018ce",
+      "kind": "entity",
+      "source": "/assets/debris/p_c67ef018ce.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1716,
+        "y": 3500,
+        "width": 62,
+        "height": 59
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.096875,
+        "y": -0.143105,
+        "width": 0.19375,
+        "height": 0.184073
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_c85da66ebe",
+      "kind": "entity",
+      "source": "/assets/debris/p_c85da66ebe.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2108,
+        "y": 3575,
+        "width": 49,
+        "height": 36
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.078125,
+        "y": -0.077587,
+        "width": 0.153125,
+        "height": 0.112316
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_c8fc8e3546",
+      "kind": "entity",
+      "source": "/assets/debris/p_c8fc8e3546.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 935,
+        "y": 3575,
+        "width": 68,
+        "height": 43
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.10625,
+        "y": -0.086947,
+        "width": 0.2125,
+        "height": 0.134155
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_c93d0c24f0",
+      "kind": "entity",
+      "source": "/assets/debris/p_c93d0c24f0.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 362,
+        "y": 3575,
+        "width": 105,
+        "height": 46
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.165625,
+        "y": -0.130625,
+        "width": 0.328125,
+        "height": 0.143514
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_ca2f33ce74",
+      "kind": "entity",
+      "source": "/assets/debris/p_ca2f33ce74.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 543,
+        "y": 3622,
+        "width": 12,
+        "height": 16
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.01875,
+        "y": -0.040149,
+        "width": 0.0375,
+        "height": 0.049918
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_cdfe0c42cf",
+      "kind": "entity",
+      "source": "/assets/debris/p_cdfe0c42cf.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 313,
+        "y": 3622,
+        "width": 24,
+        "height": 18
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.0375,
+        "y": -0.037029,
+        "width": 0.075,
+        "height": 0.056158
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_cf1d1ba292",
+      "kind": "entity",
+      "source": "/assets/debris/p_cf1d1ba292.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1235,
+        "y": 3575,
+        "width": 62,
+        "height": 41
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.096875,
+        "y": -0.080707,
+        "width": 0.19375,
+        "height": 0.127915
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_d1157e5fe2",
+      "kind": "entity",
+      "source": "/assets/debris/p_d1157e5fe2.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 171,
+        "y": 3500,
+        "width": 84,
+        "height": 74
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1375,
+        "y": -0.168064,
+        "width": 0.2625,
+        "height": 0.230871
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_d169fb3027",
+      "kind": "entity",
+      "source": "/assets/debris/p_d169fb3027.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1460,
+        "y": 3500,
+        "width": 64,
+        "height": 61
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1,
+        "y": -0.146225,
+        "width": 0.2,
+        "height": 0.190313
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_d175024686",
+      "kind": "entity",
+      "source": "/assets/debris/p_d175024686.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 487,
+        "y": 3575,
+        "width": 58,
+        "height": 45
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.0875,
+        "y": -0.099426,
+        "width": 0.18125,
+        "height": 0.140395
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_d2293a4a06",
+      "kind": "entity",
+      "source": "/assets/debris/p_d2293a4a06.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3671,
+        "y": 3575,
+        "width": 32,
+        "height": 25
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05,
+        "y": -0.055748,
+        "width": 0.1,
+        "height": 0.077997
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_d2ab3fb90f",
+      "kind": "entity",
+      "source": "/assets/debris/p_d2ab3fb90f.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 699,
+        "y": 3575,
+        "width": 48,
+        "height": 44
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.075,
+        "y": -0.115026,
+        "width": 0.15,
+        "height": 0.137275
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_d343aef7ca",
+      "kind": "entity",
+      "source": "/assets/debris/p_d343aef7ca.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 594,
+        "y": 3500,
+        "width": 36,
+        "height": 69
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05625,
+        "y": -0.208622,
+        "width": 0.1125,
+        "height": 0.215272
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_d4dcb3d364",
+      "kind": "entity",
+      "source": "/assets/debris/p_d4dcb3d364.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3209,
+        "y": 3500,
+        "width": 62,
+        "height": 53
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.096875,
+        "y": -0.149345,
+        "width": 0.19375,
+        "height": 0.165354
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_d6132df0f8",
+      "kind": "entity",
+      "source": "/assets/debris/p_d6132df0f8.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 658,
+        "y": 3622,
+        "width": 17,
+        "height": 13
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.027669,
+        "width": 0.053125,
+        "height": 0.040558
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_d686b9a845",
+      "kind": "entity",
+      "source": "/assets/debris/p_d686b9a845.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3272,
+        "y": 3500,
+        "width": 37,
+        "height": 53
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05625,
+        "y": -0.139985,
+        "width": 0.115625,
+        "height": 0.165354
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_d7282ffb08",
+      "kind": "entity",
+      "source": "/assets/debris/p_d7282ffb08.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3347,
+        "y": 3500,
+        "width": 64,
+        "height": 52
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1,
+        "y": -0.118146,
+        "width": 0.2,
+        "height": 0.162234
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_d976445190",
+      "kind": "entity",
+      "source": "/assets/debris/p_d976445190.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 92,
+        "y": 3622,
+        "width": 18,
+        "height": 20
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.049508,
+        "width": 0.05625,
+        "height": 0.062398
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_db8d6a67a1",
+      "kind": "entity",
+      "source": "/assets/debris/p_db8d6a67a1.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 546,
+        "y": 3575,
+        "width": 50,
+        "height": 45
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.096875,
+        "y": -0.111906,
+        "width": 0.15625,
+        "height": 0.140395
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_dc67d0159c",
+      "kind": "entity",
+      "source": "/assets/debris/p_dc67d0159c.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3097,
+        "y": 3575,
+        "width": 84,
+        "height": 31
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1375,
+        "y": -0.102546,
+        "width": 0.2625,
+        "height": 0.096716
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_dccbeae741",
+      "kind": "entity",
+      "source": "/assets/debris/p_dccbeae741.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3815,
+        "y": 3575,
+        "width": 31,
+        "height": 23
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.05,
+        "y": -0.049508,
+        "width": 0.096875,
+        "height": 0.071757
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_dd43c9f950",
+      "kind": "entity",
+      "source": "/assets/debris/p_dd43c9f950.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2165,
+        "y": 3500,
+        "width": 50,
+        "height": 57
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.078125,
+        "y": -0.143105,
+        "width": 0.15625,
+        "height": 0.177833
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_e3f7051d06",
+      "kind": "entity",
+      "source": "/assets/debris/p_e3f7051d06.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 748,
+        "y": 3575,
+        "width": 48,
+        "height": 44
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.075,
+        "y": -0.115026,
+        "width": 0.15,
+        "height": 0.137275
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_e7166ef665",
+      "kind": "entity",
+      "source": "/assets/debris/p_e7166ef665.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 909,
+        "y": 3500,
+        "width": 98,
+        "height": 64
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.153125,
+        "y": -0.130625,
+        "width": 0.30625,
+        "height": 0.199672
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_e8930405dd",
+      "kind": "entity",
+      "source": "/assets/debris/p_e8930405dd.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1749,
+        "y": 3575,
+        "width": 52,
+        "height": 39
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.08125,
+        "y": -0.083827,
+        "width": 0.1625,
+        "height": 0.121675
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_e9ba1092f2",
+      "kind": "entity",
+      "source": "/assets/debris/p_e9ba1092f2.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1233,
+        "y": 3500,
+        "width": 74,
+        "height": 62
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.115625,
+        "y": -0.143105,
+        "width": 0.23125,
+        "height": 0.193433
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_e9ef99037e",
+      "kind": "entity",
+      "source": "/assets/debris/p_e9ef99037e.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2950,
+        "y": 3575,
+        "width": 44,
+        "height": 32
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.06875,
+        "y": -0.065108,
+        "width": 0.1375,
+        "height": 0.099836
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_ee5e4cf58f",
+      "kind": "entity",
+      "source": "/assets/debris/p_ee5e4cf58f.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3422,
+        "y": 3575,
+        "width": 14,
+        "height": 29
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.021875,
+        "y": -0.080707,
+        "width": 0.04375,
+        "height": 0.090477
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_ef6a28b204",
+      "kind": "entity",
+      "source": "/assets/debris/p_ef6a28b204.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2158,
+        "y": 3575,
+        "width": 49,
+        "height": 36
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.078125,
+        "y": -0.077587,
+        "width": 0.153125,
+        "height": 0.112316
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_ef87fe0bcf",
+      "kind": "entity",
+      "source": "/assets/debris/p_ef87fe0bcf.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3437,
+        "y": 3575,
+        "width": 57,
+        "height": 29
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.084375,
+        "y": -0.071348,
+        "width": 0.178125,
+        "height": 0.090477
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_f0b2625d71",
+      "kind": "entity",
+      "source": "/assets/debris/p_f0b2625d71.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 615,
+        "y": 3622,
+        "width": 14,
+        "height": 15
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.021875,
+        "y": -0.037029,
+        "width": 0.04375,
+        "height": 0.046798
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_f205adaec4",
+      "kind": "entity",
+      "source": "/assets/debris/p_f205adaec4.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1298,
+        "y": 3575,
+        "width": 62,
+        "height": 41
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.096875,
+        "y": -0.080707,
+        "width": 0.19375,
+        "height": 0.127915
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_f33d2ae03d",
+      "kind": "entity",
+      "source": "/assets/debris/p_f33d2ae03d.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3412,
+        "y": 3500,
+        "width": 64,
+        "height": 52
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1,
+        "y": -0.118146,
+        "width": 0.2,
+        "height": 0.162234
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_f6b6aeb6ab",
+      "kind": "entity",
+      "source": "/assets/debris/p_f6b6aeb6ab.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3182,
+        "y": 3575,
+        "width": 34,
+        "height": 31
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.053125,
+        "y": -0.083827,
+        "width": 0.10625,
+        "height": 0.096716
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_f7cde0a29b",
+      "kind": "entity",
+      "source": "/assets/debris/p_f7cde0a29b.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2014,
+        "y": 3575,
+        "width": 43,
+        "height": 37
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.065625,
+        "y": -0.099426,
+        "width": 0.134375,
+        "height": 0.115436
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_f83cb09f40",
+      "kind": "entity",
+      "source": "/assets/debris/p_f83cb09f40.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1525,
+        "y": 3500,
+        "width": 64,
+        "height": 61
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1,
+        "y": -0.146225,
+        "width": 0.2,
+        "height": 0.190313
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_f85df73aaa",
+      "kind": "entity",
+      "source": "/assets/debris/p_f85df73aaa.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3695,
+        "y": 3500,
+        "width": 26,
+        "height": 48
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.040625,
+        "y": -0.130625,
+        "width": 0.08125,
+        "height": 0.149754
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_f8d9b01f23",
+      "kind": "entity",
+      "source": "/assets/debris/p_f8d9b01f23.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1779,
+        "y": 3500,
+        "width": 62,
+        "height": 59
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.096875,
+        "y": -0.143105,
+        "width": 0.19375,
+        "height": 0.184073
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_f94b237526",
+      "kind": "entity",
+      "source": "/assets/debris/p_f94b237526.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2216,
+        "y": 3500,
+        "width": 89,
+        "height": 57
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.140625,
+        "y": -0.111906,
+        "width": 0.278125,
+        "height": 0.177833
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_fadae74d49",
+      "kind": "entity",
+      "source": "/assets/debris/p_fadae74d49.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 473,
+        "y": 3622,
+        "width": 18,
+        "height": 17
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.040149,
+        "width": 0.05625,
+        "height": 0.053038
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_fb387f9bee",
+      "kind": "entity",
+      "source": "/assets/debris/p_fb387f9bee.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2306,
+        "y": 3500,
+        "width": 92,
+        "height": 57
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.14375,
+        "y": -0.108786,
+        "width": 0.2875,
+        "height": 0.177833
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_fd166a7c6e",
+      "kind": "entity",
+      "source": "/assets/debris/p_fd166a7c6e.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 3217,
+        "y": 3575,
+        "width": 84,
+        "height": 31
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.1375,
+        "y": -0.102546,
+        "width": 0.2625,
+        "height": 0.096716
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_fdd5cf77dc",
+      "kind": "entity",
+      "source": "/assets/debris/p_fdd5cf77dc.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 1361,
+        "y": 3575,
+        "width": 62,
+        "height": 41
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.096875,
+        "y": -0.080707,
+        "width": 0.19375,
+        "height": 0.127915
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_fe55c29ae2",
+      "kind": "entity",
+      "source": "/assets/debris/p_fe55c29ae2.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 492,
+        "y": 3622,
+        "width": 18,
+        "height": 17
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.040149,
+        "width": 0.05625,
+        "height": 0.053038
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_fe65f5ca9b",
+      "kind": "entity",
+      "source": "/assets/debris/p_fe65f5ca9b.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 2709,
+        "y": 3500,
+        "width": 78,
+        "height": 56
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.121875,
+        "y": -0.152464,
+        "width": 0.24375,
+        "height": 0.174713
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
+      "id": "debris_p_ffbdc93faf",
+      "kind": "entity",
+      "source": "/assets/debris/p_ffbdc93faf.png",
+      "dataTiles": "1x1x1",
+      "frame": {
+        "x": 141,
+        "y": 3622,
+        "width": 18,
+        "height": 19
+      },
+      "frames": null,
+      "anchor": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "ink": {
+        "x": -0.028125,
+        "y": -0.046389,
+        "width": 0.05625,
+        "height": 0.059278
+      },
+      "colorVariants": 1,
+      "sway": null
+    },
+    {
       "id": "field_block_abandoned_cart_1x2",
       "kind": "entity",
       "source": "/assets/field/block_abandoned_cart_1x2.png",
@@ -4146,7 +8571,7 @@
       "source": "/assets/field/block_tall_grass.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 2150,
+        "x": 2707,
         "y": 3375,
         "width": 154,
         "height": 94
@@ -4171,7 +8596,7 @@
       "source": "/assets/field/block_tall_grass_2.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 1815,
+        "x": 2372,
         "y": 3375,
         "width": 157,
         "height": 100
@@ -4896,8 +9321,8 @@
       "source": "/assets/items/amber.png",
       "dataTiles": null,
       "frame": {
-        "x": 3968,
-        "y": 3375,
+        "x": 2391,
+        "y": 3575,
         "width": 45,
         "height": 34
       },
@@ -4921,8 +9346,8 @@
       "source": "/assets/items/bone.png",
       "dataTiles": null,
       "frame": {
-        "x": 3918,
-        "y": 3375,
+        "x": 1469,
+        "y": 3575,
         "width": 49,
         "height": 40
       },
@@ -4946,8 +9371,8 @@
       "source": "/assets/items/coconut.png",
       "dataTiles": null,
       "frame": {
-        "x": 3813,
-        "y": 3375,
+        "x": 1004,
+        "y": 3575,
         "width": 36,
         "height": 43
       },
@@ -4971,8 +9396,8 @@
       "source": "/assets/items/copper_ore.png",
       "dataTiles": null,
       "frame": {
-        "x": 4014,
-        "y": 3375,
+        "x": 2437,
+        "y": 3575,
         "width": 45,
         "height": 34
       },
@@ -4996,8 +9421,8 @@
       "source": "/assets/items/fiber.png",
       "dataTiles": null,
       "frame": {
-        "x": 3518,
-        "y": 3375,
+        "x": 1308,
+        "y": 3500,
         "width": 86,
         "height": 62
       },
@@ -5021,7 +9446,7 @@
       "source": "/assets/items/mushroom.png",
       "dataTiles": null,
       "frame": {
-        "x": 2750,
+        "x": 3485,
         "y": 3375,
         "width": 82,
         "height": 79
@@ -5046,8 +9471,8 @@
       "source": "/assets/items/stone.png",
       "dataTiles": null,
       "frame": {
-        "x": 3605,
-        "y": 3375,
+        "x": 2788,
+        "y": 3500,
         "width": 66,
         "height": 55
       },
@@ -5071,8 +9496,8 @@
       "source": "/assets/items/wood.png",
       "dataTiles": null,
       "frame": {
-        "x": 3338,
-        "y": 3375,
+        "x": 631,
+        "y": 3500,
         "width": 78,
         "height": 65
       },
@@ -14935,8 +19360,8 @@
       "source": "/assets/rock/block.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 4060,
-        "y": 3375,
+        "x": 3704,
+        "y": 3575,
         "width": 32,
         "height": 25
       },
@@ -14960,8 +19385,8 @@
       "source": "/assets/rock/block_2.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3738,
-        "y": 3375,
+        "x": 3722,
+        "y": 3500,
         "width": 74,
         "height": 47
       },
@@ -14985,8 +19410,8 @@
       "source": "/assets/rock/block_3.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3850,
-        "y": 3375,
+        "x": 1041,
+        "y": 3575,
         "width": 67,
         "height": 43
       },
@@ -15010,8 +19435,8 @@
       "source": "/assets/rock/block_4.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3672,
-        "y": 3375,
+        "x": 3548,
+        "y": 3500,
         "width": 65,
         "height": 51
       },
@@ -15035,8 +19460,8 @@
       "source": "/assets/rock/block_5.png",
       "dataTiles": "1x1x1",
       "frame": {
-        "x": 3417,
-        "y": 3375,
+        "x": 710,
+        "y": 3500,
         "width": 100,
         "height": 65
       },

@@ -1,17 +1,14 @@
 //! Tests for the blast: where the pieces go, that it is repeatable, and that they land.
 
 use super::*;
-use crate::debris::parts::{Part, PartBox};
+use crate::debris::parts::Part;
 
 fn part(at: [f64; 3]) -> Part {
     Part {
         piece: "leaf_block".into(),
         at,
-        boxes: vec![PartBox {
-            centre: [0.0, 0.0, 13.0],
-            half: [13.0, 13.0, 13.0],
-            color: 0x80c034,
-        }],
+        sprite: "debris/p_0123456789".into(),
+        shift: [0.0, 0.0],
     }
 }
 

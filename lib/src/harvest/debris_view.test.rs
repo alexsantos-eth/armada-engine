@@ -1,27 +1,20 @@
 //! Tests for how a gathered entity comes apart on screen.
 
 use super::*;
-use iso::debris::{Part, PartBox};
+use iso::debris::Part;
 
 fn tree() -> EntityParts {
-    let boxed = |z: f64| PartBox {
-        centre: [0.0, 0.0, z],
-        half: [8.0, 6.0, 10.0],
-        color: 0x8a5a30,
+    let part = |piece: &str, at: [f64; 3], sprite: &str| Part {
+        piece: piece.into(),
+        at,
+        sprite: sprite.into(),
+        shift: [0.0, 0.0],
     };
     EntityParts {
         tiles: [1, 1, 2],
         parts: vec![
-            Part {
-                piece: "trunk".into(),
-                at: [0.0, 0.0, 0.0],
-                boxes: vec![boxed(10.0), boxed(30.0)],
-            },
-            Part {
-                piece: "leaf_block".into(),
-                at: [-30.0, 0.0, 85.0],
-                boxes: vec![boxed(10.0)],
-            },
+            part("trunk", [0.0, 0.0, 0.0], "debris/p_a"),
+            part("leaf_block", [-30.0, 0.0, 85.0], "debris/p_b"),
         ],
     }
 }
@@ -34,30 +27,28 @@ fn spawned() -> DebrisView {
 
 #[test]
 fn a_blast_starts_as_the_entity_stood() {
-    let view = spawned();
-    let placed = view.blasts[0].placed();
-    assert_eq!(placed.len(), 3);
-    // The trunk's lowest box sits on the base of the anchor tile, as wide as the model says.
+    let placed = spawned().blasts[0].placed();
+    assert_eq!(placed.len(), 2);
+    assert_eq!(placed[0].sprite, "debris/p_a");
     assert_eq!(placed[0].at, [4.5, 7.5, 2.0]);
-    assert_eq!(placed[0].size, [12.0 / 128.0, 16.0 / 128.0, 20.0 / 85.0]);
-    assert!((placed[1].at[2] - (2.0 + 20.0 / 85.0)).abs() < 1e-9);
-    // The leaf block stood a block up, towards the grid's +y... (model x -30 is grid y +30/128).
-    assert!((placed[2].at[2] - (2.0 + 1.0)).abs() < 1e-9);
-    assert!((placed[2].at[1] - (7.5 + 30.0 / 128.0)).abs() < 1e-9);
-    assert!(placed.iter().all(|p| p.alpha == 1.0));
+    // The leaf block stood a block up, 30 voxels along the model's -x, which is the grid's +y.
+    let ground = ground_of(-30.0, 0.0);
+    assert!((placed[1].at[0] - (4.5 + ground.x)).abs() < 1e-9);
+    assert!((placed[1].at[1] - (7.5 + ground.y)).abs() < 1e-9);
+    assert!((placed[1].at[2] - 3.0).abs() < 1e-9);
+    assert!(placed.iter().all(|p| p.alpha == 1.0 && p.scale == 1.0));
 }
 
 #[test]
-fn the_pieces_move_apart_and_a_piece_keeps_its_boxes_together() {
+fn the_pieces_move_apart_and_then_fade() {
     let mut view = spawned();
     let before = view.blasts[0].placed();
     view.advance(200.0);
     let after = view.blasts[0].placed();
-    assert_eq!(after.len(), before.len());
-    // The two trunk boxes move as one: the gap between them does not change.
-    let gap = |boxes: &[Placed]| boxes[1].at[2] - boxes[0].at[2];
-    assert!((gap(&before) - gap(&after)).abs() < 1e-9);
-    assert!(after[2].at != before[2].at);
+    assert_ne!(after[1].at, before[1].at);
+    view.advance(DEBRIS_MS - 300.0);
+    let last = view.blasts[0].placed();
+    assert!(last[0].alpha < 1.0 && last[0].scale < 1.0);
 }
 
 #[test]
@@ -90,25 +81,31 @@ fn only_so_many_entities_come_apart_at_once() {
 }
 
 #[test]
-fn a_face_is_its_colour_at_its_own_brightness() {
-    let [top, left, right] = colours(0xff8000, 0.5);
-    assert_eq!((top.r, top.a), (1.0, 0.5));
-    assert!((left.r - LEFT_SHADE).abs() < 1e-6);
-    assert!((right.g - 128.0 / 255.0 * RIGHT_SHADE).abs() < 1e-6);
-    assert_eq!(top.b, 0.0);
+fn a_shrinking_piece_stays_on_its_spot() {
+    let layout = SpriteLayout {
+        x: 90.0,
+        y: 40.0,
+        width: 20.0,
+        height: 20.0,
+    };
+    let about = ScreenPoint { x: 100.0, y: 60.0 };
+    let half = scaled_about(layout, about, 0.5);
+    assert_eq!((half.width, half.height), (10.0, 10.0));
+    // Its foot, the point it was scaled about, did not move.
+    assert_eq!(half.x + half.width / 2.0, 100.0);
+    assert_eq!(half.y + half.height, 60.0);
+    assert_eq!(scaled_about(layout, about, 1.0), layout);
 }
 
 #[test]
-fn it_draws_every_box_of_every_live_piece() {
-    let view = spawned();
-    let mut draws = Vec::new();
-    let projection = ProjectionConfig {
-        tile_width: 64.0,
-        tile_height: 32.0,
-        origin_x: 0.0,
-        origin_y: 0.0,
-        elevation_step: None,
-    };
-    view.collect(projection, &mut draws);
-    assert_eq!(draws.len(), 3);
+fn a_wide_piece_is_drawn_back_from_where_it_stands_by_how_far_its_sprite_was_moved() {
+    let mut parts = tree();
+    parts.parts[0].shift = [64.0, 64.0];
+    let mut view = DebrisView::default();
+    view.spawn(&parts, WorldCoord { x: 0, y: 0 }, 0, 1);
+    let placed = view.blasts[0].placed();
+    // The sprite's foot is where the piece was moved to: back by that, to land it where it stands.
+    let back = ground_of(64.0, 64.0);
+    assert!((placed[0].at[0] - (0.5 - back.x)).abs() < 1e-9);
+    assert!((placed[0].at[1] - (0.5 - back.y)).abs() < 1e-9);
 }

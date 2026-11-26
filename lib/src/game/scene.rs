@@ -1327,7 +1327,8 @@ impl Game {
         }
         self.dust.collect(projection, &mut self.draws);
         self.debris.advance(frame_ms);
-        self.debris.collect(projection, &mut self.draws);
+        self.debris
+            .collect(projection, &self.atlas, &mut self.draws);
     }
 
     /// The flames, sparks and smoke of the fires in view, drawn like the dust: real time, in the

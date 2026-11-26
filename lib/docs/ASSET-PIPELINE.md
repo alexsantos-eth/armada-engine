@@ -86,9 +86,9 @@ pieza llamada `box`. `python3 vox_models.py --parts` escribe solo estos JSON y d
 están (el `.vox` versionado puede ir por detrás del generador).
 
 `python3 artifacts/vox/clay/vox_parts_pack.py` junta los de las entidades con regla de recolección en
-`items.json` en `lib/content/json/entity-parts.json`, que el juego lee (`iso::debris::parse_parts`) para
-hacer estallar la entidad en sus piezas al recolectarla. Se busca por el sprite (`tree/block_2`). Al
-añadir una entidad recolectable hay que regenerar los dos; el test
+`items.json` en `lib/content/json/entity-parts.json` (por pieza: nombre, dónde está y su sprite `debris/p_<hash>`, el hash de sus cajas), que el juego lee (`iso::debris::parse_parts`) para
+hacer estallar la entidad en sus piezas al recolectarla. Se busca por el sprite (`tree/block_2`). `python3 artifacts/vox/clay/vox_debris.py` renderiza con Blender (clay, 32 muestras, unos 7 s cada una) un sprite por pieza distinta que falte en `lib/assets/debris/` (con nombres, esos aunque existan), con el origen de la pieza en el pie de la casilla; una pieza más ancha que una casilla va en un lienzo 2x2 y movida 64 vóxeles (`shift` en el JSON). Después `build-atlas.sh` y recompilar. Al
+añadir una entidad recolectable hay que regenerar todo; el test
 `the_packed_entities_read_and_cover_every_harvestable_sprite` falla si falta alguna.
 
 `artifacts/vox/clay/vox_buildings.py` hace lo mismo con lo construido (las cinco piedras rúnicas,

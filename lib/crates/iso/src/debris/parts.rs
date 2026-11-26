@@ -1,5 +1,6 @@
 //! The pieces an entity is assembled from, as the voxel pipeline wrote them
-//! (`artifacts/vox/clay/vox_parts_pack.py` → `content/json/entity-parts.json`).
+//! (`artifacts/vox/clay/vox_parts_pack.py` → `content/json/entity-parts.json`): where each one
+//! stands and the sprite it is drawn with (`artifacts/vox/clay/vox_debris.py`).
 
 use std::collections::HashMap;
 
@@ -13,15 +14,6 @@ pub const VOXELS_PER_TILE: f64 = 128.0;
 /// Voxels in one block of height.
 pub const VOXELS_PER_BLOCK: f64 = 85.0;
 
-/// One rounded box of a piece, flattened to a plain box: its middle (relative to where the piece
-/// stands) and half sizes in voxels, and its colour as `0xRRGGBB`.
-#[derive(Clone, Debug, PartialEq)]
-pub struct PartBox {
-    pub centre: [f64; 3],
-    pub half: [f64; 3],
-    pub color: u32,
-}
-
 /// One piece of the kit placed in an entity.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Part {
@@ -30,7 +22,12 @@ pub struct Part {
     /// Where it stands, in voxels from the anchor tile's foot: the middle of its footprint, on its
     /// lowest point.
     pub at: [f64; 3],
-    pub boxes: Vec<PartBox>,
+    /// The sprite it is drawn with, `debris/p_<hash>`: rendered with its own origin at the foot of
+    /// the anchor tile, so it goes where the piece stands.
+    pub sprite: String,
+    /// Voxels along the model's x and y that a piece too wide for the 1x1x1 canvas was moved off
+    /// the foot of its sprite when rendered; `[0, 0]` for the rest.
+    pub shift: [f64; 2],
 }
 
 /// An entity as the pieces it is made of, in the order they were assembled.
@@ -46,8 +43,6 @@ pub struct EntityParts {
 pub enum PartsError {
     /// Not the JSON this module reads.
     Json(serde_json::Error),
-    /// A colour that is not six hex digits.
-    Color(String),
     /// A file measured in other units than the engine's.
     Units,
 }
@@ -56,7 +51,6 @@ impl std::fmt::Display for PartsError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Json(error) => write!(f, "entity parts: {error}"),
-            Self::Color(color) => write!(f, "entity parts: bad colour {color:?}"),
             Self::Units => write!(f, "entity parts: voxels per tile or block do not match"),
         }
     }
@@ -65,17 +59,12 @@ impl std::fmt::Display for PartsError {
 impl std::error::Error for PartsError {}
 
 #[derive(Deserialize)]
-struct RawBox {
-    c: [f64; 3],
-    h: [f64; 3],
-    color: String,
-}
-
-#[derive(Deserialize)]
 struct RawPart {
     piece: String,
     at: [f64; 3],
-    boxes: Vec<RawBox>,
+    sprite: String,
+    #[serde(default)]
+    shift: [f64; 2],
 }
 
 #[derive(Deserialize)]
@@ -113,26 +102,16 @@ pub fn parse_parts(json: &str) -> Result<PartsCatalog, PartsError> {
     }
     let mut entities = HashMap::new();
     for (key, entity) in raw.entities {
-        let mut parts = Vec::with_capacity(entity.parts.len());
-        for part in entity.parts {
-            let mut boxes = Vec::with_capacity(part.boxes.len());
-            for b in part.boxes {
-                let color = u32::from_str_radix(&b.color, 16)
-                    .ok()
-                    .filter(|_| b.color.len() == 6)
-                    .ok_or_else(|| PartsError::Color(b.color.clone()))?;
-                boxes.push(PartBox {
-                    centre: b.c,
-                    half: b.h,
-                    color,
-                });
-            }
-            parts.push(Part {
+        let parts = entity
+            .parts
+            .into_iter()
+            .map(|part| Part {
                 piece: part.piece,
                 at: part.at,
-                boxes,
-            });
-        }
+                sprite: part.sprite,
+                shift: part.shift,
+            })
+            .collect();
         entities.insert(
             key,
             EntityParts {

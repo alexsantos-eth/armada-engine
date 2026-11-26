@@ -1,1 +1,1 @@
-{"model":"rock_small","asset":"rock/block","tiles":[1,1,1],"voxels":{"per_tile":128,"per_block":85},"parts":[{"piece":"rock_s","variant":"","at":[3.0,-4.0,0.0],"boxes":[{"c":[0.0,0.0,4.0],"h":[7.0,6.0,4.0],"color":"7c7c7a"}]}]}
+{"model":"rock_small","asset":"rock/block","tiles":[1,1,1],"voxels":{"per_tile":128,"per_block":85},"parts":[{"piece":"rock_s","variant":"","at":[3.0,-4.0,0.0],"boxes":[{"c":[0.0,0.0,4.0],"h":[7.0,6.0,4.0],"r":3.4,"color":"7c7c7a"}]}]}

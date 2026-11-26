@@ -1,12 +1,11 @@
 # Debris
 
-Este dominio sabe de qué piezas está armada cada entidad y cómo salen despedidas cuando se recolecta. Toda entidad nace de las piezas del kit voxel (`artifacts/vox/clay/vox_prefabs.py`); el pipeline guarda cómo en un JSON por modelo y el juego lo usa para que, al caer lo recolectado, sus piezas exploten en vez de desaparecer sin más.
+Este dominio sabe de qué piezas está armada cada entidad y cómo salen despedidas cuando se recolecta. Toda entidad nace de las piezas del kit voxel (`artifacts/vox/clay/vox_prefabs.py`); el pipeline guarda cómo en un JSON por modelo y renderiza cada pieza con Blender y el juego lo usa para que, al caer lo recolectado, sus piezas exploten en vez de desaparecer sin más.
 
-- **Las piezas** (`parts.rs`): `content/json/entity-parts.json` (de `vox_parts_pack.py`) trae, por sprite, las piezas en el orden en que se armó la entidad: el nombre en el kit, el vóxel donde está plantada (`at`, sobre su punto más bajo) y sus cajas alrededor de ese punto, ya giradas y planas (centro, medios tamaños y color). Solo están las entidades con regla de recolección. Los vóxeles son los del pipeline: 128 por casilla (`VOXELS_PER_TILE`) y 85 por bloque de alto (`VOXELS_PER_BLOCK`); el archivo trae su unidad y `parse_parts` lo rechaza si no coincide. El eje del modelo va al revés que el de la rejilla (su x corre abajo a la derecha): `model_to_grid` lo cambia.
-- **La explosión** (`blast.rs`): `blast` lanza cada pieza desde el medio del volumen de la entidad hacia donde estaba, con un giro y una velocidad que salen de un flujo sembrado (`DustRandom`), más alto cuanto más alta estaba. `pose_at` es una función cerrada del tiempo desde la explosión, sin estado: un arco, un único rebote (`DEBRIS_BOUNCE`), reposo y, desde `DEBRIS_FADE_AT_MS`, se encoge hasta `DEBRIS_MIN_SCALE` y se desvanece; a los `DEBRIS_MS` ya no hay nada. La misma semilla rompe la entidad siempre igual. El suelo es la base de la entidad (a cada pieza le basta con eso: el relieve de alrededor no se consulta).
-- **Las caras** (`faces.rs`): `box_faces` da a la vista las tres caras de una caja que no es un cubo, en el mismo marco que `iso::player::voxel_faces`.
+- **Las piezas** (`parts.rs`): `content/json/entity-parts.json` (de `vox_parts_pack.py`) trae, por sprite de entidad, las piezas en el orden en que se armó: el nombre en el kit, el vóxel donde está plantada (`at`, sobre su punto más bajo) y el sprite con que se dibuja (`debris/p_<hash>`, renderizado con Blender y el mismo acabado clay por `artifacts/vox/clay/vox_debris.py`, con el origen de la pieza en el pie de la casilla ancla). Una pieza más ancha que la casilla se renderiza movida (`shift`, en vóxeles) y la vista la devuelve a su sitio. Solo están las entidades con regla de recolección. Los vóxeles son los del pipeline: 128 por casilla (`VOXELS_PER_TILE`) y 85 por bloque de alto (`VOXELS_PER_BLOCK`); el archivo trae su unidad y `parse_parts` lo rechaza si no coincide. El eje del modelo va al revés que el de la rejilla (su x corre abajo a la derecha): `model_to_grid` lo cambia.
+- **La explosión** (`blast.rs`): `blast` lanza cada pieza desde el medio del volumen de la entidad hacia donde estaba, con un giro y una velocidad que salen de un flujo sembrado (`DustRandom`), más alto cuanto más alta estaba. `pose_at` es una función cerrada del tiempo desde la explosión, sin estado: un arco, un único rebote (`DEBRIS_BOUNCE`), reposo y, desde `DEBRIS_FADE_AT_MS`, se encoge hasta `DEBRIS_MIN_SCALE` y se desvanece; a los `DEBRIS_MS` ya no hay nada. La misma semilla rompe la entidad siempre igual. El suelo es la base de la entidad (el relieve de alrededor no se consulta).
 
-La vista (`src/harvest/debris_view.rs`) pone las cajas en pantalla y lleva los relojes; nada de esto se guarda ni toca la simulación.
+La vista (`src/harvest/debris_view.rs`) pone el sprite de cada pieza en pantalla y lleva los relojes; nada de esto se guarda ni toca la simulación.
 
 ## Catálogo de API pública
 
@@ -32,16 +31,14 @@ La vista (`src/harvest/debris_view.rs`) pone las cajas en pantalla y lleva los r
 
 #### Tipos
 
-- [`PartBox`](parts.rs#L19) — Una caja de una pieza, plana: centro y medios tamaños en vóxeles, y su color `0xRRGGBB`.
-  - Declaración: `pub struct PartBox { pub centre: [f64; 3], pub half: [f64; 3], pub color: u32 }`
-- [`Part`](parts.rs#L27) — Una pieza del kit puesta en una entidad: su nombre, dónde está plantada y sus cajas.
-  - Declaración: `pub struct Part { pub piece: String, pub at: [f64; 3], pub boxes: Vec<PartBox> }`
+- [`Part`](parts.rs#L27) — Una pieza del kit puesta en una entidad: su nombre, dónde está plantada, su sprite y cuánto se movió al renderizarlo.
+  - Declaración: `pub struct Part { pub piece: String, pub at: [f64; 3], pub sprite: String, pub shift: [f64; 2] }`
 - [`EntityParts`](parts.rs#L38) — Una entidad como las piezas de que se hizo, en el orden en que se armó.
   - Declaración: `pub struct EntityParts { pub tiles: [u32; 3], pub parts: Vec<Part> }`
 - [`PartsCatalog`](parts.rs#L97) — Las piezas de cada entidad que puede estallar, buscadas por su sprite.
   - Declaración: `pub struct PartsCatalog { .. }`
-- [`PartsError`](parts.rs#L46) — Por qué no se leyeron las piezas: JSON que no es, color que no son seis hex o unidades distintas a las del motor.
-  - Declaración: `pub enum PartsError { Json(..), Color(String), Units }`
+- [`PartsError`](parts.rs#L46) — Por qué no se leyeron las piezas: JSON que no es o unidades distintas a las del motor.
+  - Declaración: `pub enum PartsError { Json(..), Units }`
 
 ### `blast.rs`
 
@@ -79,10 +76,3 @@ La vista (`src/harvest/debris_view.rs`) pone las cajas en pantalla y lleva los r
   - Declaración: `pub struct Fragment { pub part: usize, pub start: [f64; 3], pub velocity: [f64; 3] }`
 - [`Pose`](blast.rs#L50) — Dónde está un fragmento y cómo se ve.
   - Declaración: `pub struct Pose { pub at: [f64; 3], pub scale: f64, pub alpha: f64 }`
-
-### `faces.rs`
-
-#### Funciones y métodos
-
-- [`box_faces`](faces.rs#L8) — Las tres caras de una caja apoyada en el suelo, como puntos de pantalla relativos al medio de su base.
-  - Firma: `pub fn box_faces( across: f64, deep: f64, height_blocks: f64, tile_width: f64, tile_height: f64, box_height: f64, ) -> VoxelFaces {`

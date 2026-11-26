@@ -2,9 +2,7 @@
 //! apart when it is gathered.
 
 pub mod blast;
-pub mod faces;
 pub mod parts;
 
 pub use blast::*;
-pub use faces::*;
 pub use parts::*;

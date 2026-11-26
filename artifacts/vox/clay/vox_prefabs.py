@@ -700,7 +700,7 @@ def parts_of(boxes):
     """How an entity is built, from the boxes `piece`, `moved`, `turned` and `spun` put in place:
     its pieces in assembly order, each with its kit name and colour variant, the voxel where it
     stands (`at`: the middle of its footprint, on its lowest point) and its boxes around that
-    point (centre `c` and half sizes `h`, in voxels, and `color`). Loose boxes the model drew
+    point (centre `c`, half sizes `h` and corner radius `r`, in voxels, and `color`). Loose boxes the model drew
     without a piece each stand as a piece named `box`. Lengths are in voxels from the anchor
     tile's foot, the unit `.vox` files use."""
     order, loose = [], 0
@@ -725,6 +725,7 @@ def parts_of(boxes):
             piece=name, variant=variant, at=[_voxels(v) for v in at],
             boxes=[dict(c=[_voxels(b["c"][a] - at[a]) for a in range(3)],
                         h=[_voxels(b["h"][a]) for a in range(3)],
+                        r=_voxels(b["r"]),
                         color=b["color"].lstrip("#"))
                    for b in group]))
     return parts

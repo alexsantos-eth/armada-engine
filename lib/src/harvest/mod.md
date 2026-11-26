@@ -8,7 +8,7 @@ La hotbar, el globo de aviso, la nota y las ganancias los pinta el HUD de arcill
 
 `draw_hotbar` solo pinta con Macroquad y no tiene test: se comprueba con `scenes/pr-harvest.json` (excepción de GPU de `FILE_STRUCTURE.md`); la geometría, las etiquetas y la barra de progreso son puros y se prueban en `hotbar.test.rs`.
 
-**Explosión** (`debris_view.rs`): al caer una entidad, `Game::step_harvest` busca sus piezas por su sprite (`Game::entity_parts`, de `content/json/entity-parts.json`) y llama a `DebrisView::spawn`; `Game::collect_dust` la envejece con el tiempo real del fotograma y encola cada caja (`SpriteDraw::voxel`, ordenada por `scene_key` donde está en ese momento). El movimiento es de `iso::debris`; aquí solo se colocan las cajas (`Blast::placed`, pura y probada en `debris_view.test.rs`) y se dibujan. Hasta `MAX_BLASTS` entidades a la vez. El suelo de las piezas es la base de la entidad: si caen sobre un terreno a otro nivel se ven a la altura de esa base.
+**Explosión** (`debris_view.rs`): al caer una entidad, `Game::step_harvest` busca sus piezas por su sprite (`Game::entity_parts`, de `content/json/entity-parts.json`) y llama a `DebrisView::spawn`; `Game::collect_dust` la envejece con el tiempo real del fotograma y encola el sprite de cada pieza (`SpriteDraw::whole` con el alfa de la pose, encogido sobre su pie, ordenado por `scene_key` donde está en ese momento; si el atlas no tiene el sprite, se salta). El movimiento es de `iso::debris`; aquí solo se colocan las piezas (`Blast::placed`, pura y probada en `debris_view.test.rs`) y se dibujan. Hasta `MAX_BLASTS` entidades a la vez. El suelo de las piezas es la base de la entidad: si caen sobre un terreno a otro nivel se ven a la altura de esa base.
 
 ## Catálogo de API pública
 
