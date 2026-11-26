@@ -1,5 +1,5 @@
-//! The items lying on the ground: what a felling drops around where it stood, picked up by
-//! walking over them, kept in their own part of a save.
+//! The items lying on the ground: the pieces of what was felled that stay floating where they
+//! landed, picked up by walking over them, kept in their own part of a save.
 
 use super::pieces::PiecePick;
 use crate::debris::{EntityParts, blast, model_to_grid, rest_of};
@@ -8,10 +8,6 @@ use crate::harvest::Feet;
 use crate::inventory::Inventory;
 use crate::items::{HarvestYield, ItemCatalog};
 use crate::projection::GridPoint;
-use crate::terrain::derive_seed;
-
-/// Farthest, in columns, a heap lands from the centre of what dropped it.
-pub const DROP_SCATTER: f64 = 0.35;
 
 /// Farthest, in columns, a floating piece lies from the middle of what it came off.
 pub const PIECE_SCATTER: f64 = 1.3;
@@ -31,7 +27,7 @@ pub const DROPS_PART: &str = "drops";
 /// The version of the drops' part this engine writes and reads.
 pub const DROPS_PART_VERSION: u32 = 1;
 
-/// One item on the ground, or a multi-unit heap from an older save.
+/// One item on the ground: a piece of what was felled, floating where it landed.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Drop {
     /// Unique among the heaps of a world, never reused.
@@ -47,10 +43,8 @@ pub struct Drop {
     /// Fixed ticks left before it can be picked up.
     #[serde(default)]
     pub wait: u32,
-    /// The voxel piece it is, when it came off a piece of what was felled instead of a plain heap:
-    /// it floats where it landed, drawn with the piece's own sprite.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub piece: Option<DropPiece>,
+    /// The voxel piece it is, drawn with its own sprite.
+    pub piece: DropPiece,
 }
 
 /// What a floating piece looks like.
@@ -101,39 +95,6 @@ impl Drops {
         &self.list
     }
 
-    /// Drops one item per unit yielded by a felling, scattered around its anchor by a stream seeded from
-    /// its id, so the same felling always lands in the same places.
-    pub fn spawn(&mut self, felled: Felled<'_>, yields: &[HarvestYield]) {
-        let from = GridPoint {
-            x: f64::from(felled.anchor.x),
-            y: f64::from(felled.anchor.y),
-        };
-        let count: u64 = yields.iter().map(|gained| u64::from(gained.amount)).sum();
-        let seed = format!("drop@{}", felled.id);
-        let turn = unit(derive_seed(0, &seed));
-        let units = yields
-            .iter()
-            .flat_map(|gained| (0..gained.amount).map(move |_| &gained.item));
-        for (index, item) in units.enumerate() {
-            let reach = DROP_SCATTER * (0.55 + 0.45 * unit(derive_seed(index as u64, &seed)));
-            let angle = std::f64::consts::TAU * (turn + index as f64 / count as f64);
-            self.list.push(Drop {
-                id: self.next_id,
-                item: item.clone(),
-                amount: 1,
-                at: GridPoint {
-                    x: from.x + reach * angle.cos(),
-                    y: from.y + reach * angle.sin(),
-                },
-                elevation: f64::from(felled.elevation),
-                from,
-                wait: PICKUP_DELAY_TICKS,
-                piece: None,
-            });
-            self.next_id += 1;
-        }
-    }
-
     /// Leaves each of `plan`'s picks floating where its piece of `parts` comes to rest when the
     /// blast of `seed` throws it, carrying its units. Where it lands is clamped to
     /// [`PIECE_SCATTER`] columns from the anchor, so it is always within reach.
@@ -175,10 +136,10 @@ impl Drops {
                     y: from.y + start[1],
                 },
                 wait: PICKUP_DELAY_TICKS,
-                piece: Some(DropPiece {
+                piece: DropPiece {
                     sprite: part.sprite.clone(),
                     shift: model_to_grid_pair(part.shift),
-                }),
+                },
             });
             self.next_id += 1;
         }
@@ -245,16 +206,11 @@ fn model_to_grid_pair(shift: [f64; 2]) -> [f64; 2] {
     [moved.x, moved.y]
 }
 
-/// A 64-bit hash as a share of one, `0.0..1.0`.
-fn unit(hash: u64) -> f64 {
-    (hash >> 11) as f64 / (1u64 << 53) as f64
-}
-
 #[derive(serde::Serialize, serde::Deserialize)]
 struct RawPart {
     version: u32,
     next_id: u64,
-    drops: Vec<Drop>,
+    drops: Vec<serde_json::Value>,
 }
 
 /// `systems` with the drops' part written into it; other parts are kept as they are.
@@ -262,7 +218,11 @@ pub fn with_drops(mut systems: serde_json::Value, drops: &Drops) -> serde_json::
     let part = RawPart {
         version: DROPS_PART_VERSION,
         next_id: drops.next_id,
-        drops: drops.list.clone(),
+        drops: drops
+            .list
+            .iter()
+            .filter_map(|drop| serde_json::to_value(drop).ok())
+            .collect(),
     };
     let value = serde_json::to_value(part).unwrap_or(serde_json::Value::Null);
     if let Some(object) = systems.as_object_mut() {
@@ -272,8 +232,8 @@ pub fn with_drops(mut systems: serde_json::Value, drops: &Drops) -> serde_json::
     serde_json::json!({ DROPS_PART: value })
 }
 
-/// The heaps a save's `systems` records, leaving out those of items the catalog no longer has,
-/// or `None` when the save predates the part or carries a version this engine does not read.
+/// The drops a save's `systems` records, leaving out those of items the catalog no longer has and
+/// the plain heaps older saves wrote (they had no piece), or `None` when the save predates the part or carries a version this engine does not read.
 pub fn saved_drops(systems: &serde_json::Value, items: &ItemCatalog) -> Option<Drops> {
     let part: RawPart = serde_json::from_value(systems.get(DROPS_PART)?.clone()).ok()?;
     if part.version != DROPS_PART_VERSION {
@@ -282,7 +242,8 @@ pub fn saved_drops(systems: &serde_json::Value, items: &ItemCatalog) -> Option<D
     let next_id = part
         .drops
         .iter()
-        .map(|drop| drop.id + 1)
+        .filter_map(|drop| drop.get("id")?.as_u64())
+        .map(|id| id + 1)
         .max()
         .unwrap_or(0)
         .max(part.next_id);
@@ -290,6 +251,7 @@ pub fn saved_drops(systems: &serde_json::Value, items: &ItemCatalog) -> Option<D
         list: part
             .drops
             .into_iter()
+            .filter_map(|drop| serde_json::from_value::<Drop>(drop).ok())
             .filter(|drop| drop.amount > 0 && items.item(&drop.item).is_some())
             .collect(),
         next_id,

@@ -37,7 +37,6 @@ fn one_piece_per_unit_among_the_pieces_the_item_names() {
     let parts = parts(&["trunk", "leaf_block", "trunk", "branch", "trunk"]);
     let plan = plan_pieces(&parts, &[gain("wood", 3)], &items(), 1);
     assert_eq!(plan.picks.len(), 3);
-    assert!(plan.rest.is_empty());
     let mut chosen = plan.parts();
     chosen.sort_unstable();
     chosen.dedup();
@@ -59,7 +58,6 @@ fn an_entity_with_two_logs_gives_two_even_if_the_harvest_says_five() {
     let plan = plan_pieces(&parts, &[gain("wood", 5)], &items(), 4);
     assert_eq!(plan.picks.len(), 2);
     assert!(plan.picks.iter().all(|pick| pick.amount == 1));
-    assert!(plan.rest.is_empty());
 }
 
 #[test]
@@ -70,10 +68,9 @@ fn the_limit_caps_the_pieces() {
 }
 
 #[test]
-fn what_no_piece_stands_for_drops_as_plain_heaps() {
+fn what_no_piece_stands_for_gives_nothing() {
     let parts = parts(&["rock_s", "pebble_s"]);
     let plan = plan_pieces(&parts, &[gain("wood", 2), gain("stone", 1)], &items(), 5);
-    assert_eq!(plan.rest, [gain("wood", 2)]);
     assert_eq!(
         plan.picks,
         [PiecePick {
@@ -94,18 +91,16 @@ fn only_the_pieces_the_parts_mark_as_collectable_can_be_picked() {
         let mut chosen = plan.parts();
         chosen.sort_unstable();
         assert_eq!(chosen, [0, 2], "seed {seed}");
-        assert!(
-            plan.rest.is_empty(),
-            "the entity does have collectable pieces"
-        );
     }
 }
 
 #[test]
-fn an_entity_without_collectable_pieces_drops_plain_heaps() {
+fn an_entity_without_collectable_pieces_gives_nothing() {
     let mut parts = parts(&["trunk"]);
     parts.parts[0].collect = false;
-    let plan = plan_pieces(&parts, &[gain("wood", 2)], &items(), 1);
-    assert!(plan.picks.is_empty());
-    assert_eq!(plan.rest, [gain("wood", 2)]);
+    assert!(
+        plan_pieces(&parts, &[gain("wood", 2)], &items(), 1)
+            .picks
+            .is_empty()
+    );
 }

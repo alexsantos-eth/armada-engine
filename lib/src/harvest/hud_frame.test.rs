@@ -4,7 +4,7 @@ use super::*;
 use iso::grid::WorldCoord;
 use iso::harvest::{HarvestBlock, HarvestStatus, HarvestTarget};
 use iso::inventory::Carried;
-use iso::items::{HarvestYield, ItemCatalog, ToolKind};
+use iso::items::{ItemCatalog, ToolKind};
 
 fn items() -> ItemCatalog {
     let entities: iso::entities::EntityCatalog =
@@ -189,13 +189,26 @@ fn collecting_more_wood_keeps_a_full_stack_at_its_limit_during_the_flight() {
     let limit = items.item("wood").unwrap().stack;
     carried.inventory.add("wood", limit, &items);
     let mut drops = iso::drops::Drops::default();
-    drops.spawn(
+    let parts = iso::debris::EntityParts {
+        tiles: [1, 1, 1],
+        parts: vec![iso::debris::Part {
+            piece: "trunk".into(),
+            at: [0.0, 0.0, 0.0],
+            sprite: "debris/p_test".into(),
+            shift: [0.0, 0.0],
+            collect: true,
+        }],
+    };
+    drops.spawn_pieces(
         iso::drops::Felled {
             id: "tree@0,0",
             anchor: WorldCoord { x: 0, y: 0 },
             elevation: 0,
         },
-        &[HarvestYield {
+        &parts,
+        1,
+        &[iso::drops::PiecePick {
+            part: 0,
             item: "wood".into(),
             amount: 3,
         }],

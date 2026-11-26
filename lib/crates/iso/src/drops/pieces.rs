@@ -18,12 +18,11 @@ pub struct PiecePick {
     pub amount: u32,
 }
 
-/// The pieces that stay and the yield they do not cover.
+/// The pieces that stay as items. What no collectable piece stands for is not dropped: the
+/// shipped content is tested to give every harvestable entity a piece for each item it yields.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PiecePlan {
     pub picks: Vec<PiecePick>,
-    /// Yield no piece of the entity stands for: dropped as plain heaps.
-    pub rest: Vec<HarvestYield>,
 }
 
 impl PiecePlan {
@@ -56,11 +55,6 @@ pub fn plan_pieces(
                     && names.iter().any(|name| *name == parts.parts[index].piece)
             })
             .collect();
-        if candidates.is_empty() {
-            // Nothing of it is built from what the item names: it drops as a plain heap.
-            plan.rest.push(gained.clone());
-            continue;
-        }
         // Each piece is one unit, so an entity with two trunks gives two logs at most.
         let room = MAX_PIECE_DROPS.saturating_sub(plan.picks.len());
         let count = candidates.len().min(room).min(gained.amount as usize);

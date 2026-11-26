@@ -240,19 +240,16 @@ impl Game {
                     anchor: target.anchor,
                     elevation: target.elevation,
                 };
-                let mut loose = yields.clone();
                 if let Some(parts) = self.entity_parts.of_sprite(taken.texture_source()) {
                     // The pieces that stand for what it gave stay floating as the items.
                     let plan = iso::drops::plan_pieces(parts, yields, &self.items, seed);
                     self.drops.spawn_pieces(felled_at, parts, seed, &plan.picks);
                     self.debris
                         .spawn(parts, target.anchor, target.elevation, seed, &plan.parts());
-                    loose = plan.rest;
                 }
                 if let Some(shadows) = self.shadows.as_mut() {
                     shadows.erase(&self.manager, iso::harvest::shadow_area(target.anchor));
                 }
-                self.drops.spawn(felled_at, &loose);
                 self.unsaved_changes = true;
             } else {
                 self.manager.put_entity(taken);

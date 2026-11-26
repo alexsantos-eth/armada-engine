@@ -7,7 +7,6 @@
       "stack": 50,
       "rarity": "common",
       "color": "9a6a3c",
-      "sprite": "/assets/items/wood.png",
       "pieces": [
         "trunk",
         "trunk_thick",
@@ -28,7 +27,6 @@
       "stack": 50,
       "rarity": "common",
       "color": "9c9a94",
-      "sprite": "/assets/items/stone.png",
       "pieces": [
         "rock_l",
         "stone_block",
@@ -49,7 +47,6 @@
       "stack": 99,
       "rarity": "common",
       "color": "9fbf5a",
-      "sprite": "/assets/items/fiber.png",
       "pieces": [
         "grass_tuft",
         "sprout",
@@ -66,7 +63,6 @@
       "stack": 20,
       "rarity": "common",
       "color": "d8c3a0",
-      "sprite": "/assets/items/mushroom.png",
       "pieces": [
         "mushroom",
         "toadstool"
@@ -78,7 +74,6 @@
       "stack": 20,
       "rarity": "common",
       "color": "7a5230",
-      "sprite": "/assets/items/coconut.png",
       "pieces": [
         "coconut",
         "coconut_half"
@@ -90,7 +85,6 @@
       "stack": 30,
       "rarity": "common",
       "color": "eee6d2",
-      "sprite": "/assets/items/bone.png",
       "pieces": [
         "skull_horned",
         "skull",
@@ -104,7 +98,6 @@
       "stack": 30,
       "rarity": "rare",
       "color": "c07a45",
-      "sprite": "/assets/items/copper_ore.png",
       "pieces": [
         "ore",
         "vein"
@@ -116,7 +109,6 @@
       "stack": 30,
       "rarity": "rare",
       "color": "e8a33a",
-      "sprite": "/assets/items/amber.png",
       "pieces": [
         "vein",
         "ore"

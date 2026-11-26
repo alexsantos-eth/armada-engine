@@ -17,7 +17,7 @@ pub(crate) const TOSS_HEIGHT: f64 = 0.6;
 pub(crate) const BOB_LIFT: f64 = 0.08;
 /// Real milliseconds of one bob.
 pub(crate) const BOB_MS: f64 = 1400.0;
-/// Blocks a floating voxel piece hovers above the ground: it stays up in the air, unlike a heap.
+/// Blocks a floating voxel piece hovers above the ground: the toss ends at this height.
 pub(crate) const PIECE_HOVER: f64 = 0.3;
 
 /// Where a heap is drawn: its point on the ground and how far above it.
@@ -36,19 +36,14 @@ pub(crate) fn toss(age_ms: f64, drop: &Drop) -> DropPose {
                 x: drop.from.x + (drop.at.x - drop.from.x) * t,
                 y: drop.from.y + (drop.at.y - drop.from.y) * t,
             },
-            lift: 4.0 * TOSS_HEIGHT * t * (1.0 - t),
+            lift: 4.0 * TOSS_HEIGHT * t * (1.0 - t) + PIECE_HOVER * t,
         };
     }
-    let hover = if drop.piece.is_some() {
-        PIECE_HOVER
-    } else {
-        0.0
-    };
     let phase = (drop.id % 7) as f64 / 7.0;
     let wave = ((age_ms - TOSS_MS) / BOB_MS + phase) * std::f64::consts::TAU;
     DropPose {
         at: drop.at,
-        lift: hover + BOB_LIFT * (0.5 - 0.5 * wave.cos()),
+        lift: PIECE_HOVER + BOB_LIFT * (0.5 - 0.5 * wave.cos()),
     }
 }
 

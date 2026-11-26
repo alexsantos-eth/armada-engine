@@ -75,19 +75,30 @@ fn ore_and_large_groves_wait_for_better_tools() {
 }
 
 #[test]
-fn every_item_has_the_sprite_of_its_heap_in_the_atlas() {
-    let manifest: iso::assets::AssetManifest =
-        serde_json::from_str(include_str!("../../../content/json/assets.manifest.json"))
-            .expect("the asset manifest is valid JSON");
-    let catalog: serde_json::Value =
-        serde_json::from_str(include_str!("../../../content/json/items.json")).unwrap();
-    for item in catalog["items"].as_array().unwrap() {
-        let sprite = item["sprite"]
-            .as_str()
-            .expect("every item names its sprite");
-        assert!(
-            manifest.entries.iter().any(|entry| entry.source == sprite),
-            "{sprite} is not in the atlas"
-        );
+fn every_gatherable_entity_has_a_collectable_piece_for_each_item_it_yields() {
+    let entities: iso::entities::EntityCatalog =
+        serde_json::from_str(include_str!("../../../content/json/entities.json")).unwrap();
+    let items = items();
+    let parts =
+        iso::debris::parse_parts(include_str!("../../../content/json/entity-parts.json")).unwrap();
+    for entity in &entities.entities {
+        let Some(rule) = items.harvest_rule(&entity.id) else {
+            continue;
+        };
+        let built = parts
+            .of_sprite(&entity.asset.sprite)
+            .unwrap_or_else(|| panic!("{} has no parts", entity.id));
+        for gained in &rule.yields {
+            let names = &items.item(&gained.item).unwrap().pieces;
+            assert!(
+                built
+                    .parts
+                    .iter()
+                    .any(|part| part.collect && names.contains(&part.piece)),
+                "{} has no collectable piece for {}",
+                entity.id,
+                gained.item
+            );
+        }
     }
 }
