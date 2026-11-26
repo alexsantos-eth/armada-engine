@@ -4,7 +4,7 @@ pub(crate) mod config;
 mod frame;
 pub(crate) mod ground;
 mod scene;
-mod shop;
+pub(crate) mod shop;
 mod soundscape;
 mod state;
 

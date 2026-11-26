@@ -130,7 +130,7 @@ pub enum SceneTrade {
     Close,
 }
 
-/// What a scripted player does with the mobile inventory panel.
+/// What a scripted player does with the inventory panel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ScenePack {
@@ -182,7 +182,7 @@ pub enum SceneStep {
     Edit(SceneEdit),
     /// Does something at a merchant's shop; the frame goes on with the next step.
     Trade(SceneTrade),
-    /// Does something with the mobile inventory panel (needs the scene's `touch`).
+    /// Does something with the inventory panel.
     Pack(ScenePack),
     /// Writes the frame as a PNG under the run's output directory.
     Shot(String),

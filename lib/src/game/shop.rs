@@ -26,7 +26,7 @@ enum Command {
 }
 
 /// The new presses of the pointer this frame: touches that began, or else a mouse click.
-fn pointer_taps() -> Vec<(f32, f32)> {
+pub(crate) fn pointer_taps() -> Vec<(f32, f32)> {
     let touched: Vec<(f32, f32)> = touches()
         .iter()
         .filter(|touch| touch.phase == TouchPhase::Started)

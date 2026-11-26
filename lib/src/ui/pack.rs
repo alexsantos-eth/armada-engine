@@ -1,4 +1,4 @@
-//! The mobile inventory as a panel in the middle of the screen, like the market's: two tabs
+//! The inventory as a panel in the middle of the screen, like the market's: two tabs
 //! (items and tools) and a close button along its top, and under them either the item slots in
 //! a grid or the tools in rows. Pure; tested in `pack.test.rs`; `pack_draw.rs` paints it.
 

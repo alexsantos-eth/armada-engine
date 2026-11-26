@@ -158,10 +158,27 @@ pub(crate) async fn run(mut game: Game) {
             game.clay_hud.apply(&frame, &gains, (width, height));
             game.clay_hud.advance(frame_ms);
             game.clay_hud.held = frame.action.is_some() && action_pressed(&layout);
-            if frame.touch
-                && let Some(sound) = game.clay_hud.update_inventory(&layout, &pack, &touches())
-            {
-                game.audio.play(sound);
+            // The backpack opens from a press on its icon or from the I key; Escape closes it.
+            // While the shop is open it is the menu on screen, so the backpack waits.
+            if game.shop.is_none() {
+                let presses: Vec<Touch> = crate::game::shop::pointer_taps()
+                    .into_iter()
+                    .map(|(x, y)| Touch {
+                        id: 0,
+                        phase: TouchPhase::Started,
+                        position: vec2(x, y),
+                    })
+                    .collect();
+                let sound = if is_key_pressed(KeyCode::I) {
+                    Some(game.clay_hud.toggle_inventory())
+                } else if is_key_pressed(KeyCode::Escape) {
+                    game.clay_hud.close_inventory()
+                } else {
+                    game.clay_hud.update_inventory(&layout, &pack, &presses)
+                };
+                if let Some(sound) = sound {
+                    game.audio.play(sound);
+                }
             }
             crate::ui::draw_clay_hud(skin, &game.clay_hud, &frame, &layout);
             game.toasts.advance(frame_ms);

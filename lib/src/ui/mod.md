@@ -103,11 +103,11 @@ Pinta la tienda con el kit y no tiene test (excepción de GPU de `FILE_STRUCTURE
 - [`draw_clay_hud`](draw.rs#L439) — Pinta la barra de progreso con el material que va a soltar arriba del jugador, el panel y los slots, el botón de acción, el globo de aviso y los números voladores. Dibuja la mochila cerrada o abierta según el estado del inventario táctil. La pieza `progress` es el fondo oscuro de la barra y `progress_fill` se estira dentro de su contorno según el avance.
   - Firma: `pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, layout: &HudLayout) {`
 
-### Inventario móvil
+### Inventario (mochila)
 
-- `pack.rs` — Dónde va el panel de la mochila en un móvil: una caja en el centro de la pantalla, como la del mercado, con dos pestañas («Items» y «Herramientas»), la X para cerrar, y debajo los slots en cuadrícula o las herramientas en filas (`PackLayout::new`, `PackLayout::hit`, `PackTab`, `PackHit`). Puro y probado en `pack.test.rs`.
-- `pack_draw.rs` — `draw_pack` la pinta con las piezas del kit (`hotbar`, `shop_row`, `badge`, los slots de la barra). Con el panel abierto el icono de la mochila se esconde: la X cierra. Tocar una pestaña la muestra; tocar la X o fuera del panel cierra (`ClayHud::update_inventory`).
-- Mientras el panel o la tienda están abiertos el jugador no se mueve ni actúa (`Game::menu_open`) y el mundo se desenfoca detrás; los iconos flotantes de los mercados se dibujan dentro de la escena para que ese blur también los alcance. En escritorio la barra de slots sigue como siempre.
+- `pack.rs` — Dónde va el panel de la mochila: una caja en el centro de la pantalla, como la del mercado, con dos pestañas («Items» y «Herramientas»), la X para cerrar, y debajo los slots en cuadrícula o las herramientas en filas (`PackLayout::new`, `PackLayout::hit`, `PackTab`, `PackHit`). Puro y probado en `pack.test.rs`.
+- `pack_draw.rs` — `draw_pack` la pinta con las piezas del kit (`hotbar`, `shop_row`, `badge`, los slots de la barra). Con el panel abierto el icono de la mochila se esconde: la X cierra. Tocar o hacer clic en una pestaña la muestra; tocar la X o fuera del panel cierra (`ClayHud::update_inventory`).
+- Mientras el panel o la tienda están abiertos el jugador no se mueve ni actúa (`Game::menu_open`) y el mundo se desenfoca detrás; los iconos flotantes de los mercados se dibujan dentro de la escena para que ese blur también los alcance. En escritorio es igual: la barra de slots de siempre se retiró y el inventario es el icono de la mochila (arriba a la derecha) que abre este mismo panel con un clic, con la tecla `I` (que también lo cierra) y `Esc` lo cierra. El botón de acción se esconde mientras el panel está abierto.
 
 ### Toasts
 

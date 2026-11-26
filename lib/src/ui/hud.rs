@@ -68,6 +68,22 @@ pub(crate) struct ClayHud {
 }
 
 impl ClayHud {
+    /// Opens or closes the inventory panel from its key and returns the sound.
+    pub(crate) fn toggle_inventory(&mut self) -> SoundEvent {
+        self.inventory_open = !self.inventory_open;
+        if self.inventory_open {
+            self.pack_tab = PackTab::Items;
+            SoundEvent::InventoryOpen
+        } else {
+            SoundEvent::InventoryClose
+        }
+    }
+
+    /// Closes the panel if it is open (Escape) and returns the sound.
+    pub(crate) fn close_inventory(&mut self) -> Option<SoundEvent> {
+        std::mem::take(&mut self.inventory_open).then_some(SoundEvent::InventoryClose)
+    }
+
     /// Drives the mobile inventory with the new presses of this frame and returns the sound of
     /// opening or closing it: a press on the backpack opens the panel; once open, a press on a
     /// tab shows its list, and one on the close button (or outside the panel) closes it.
