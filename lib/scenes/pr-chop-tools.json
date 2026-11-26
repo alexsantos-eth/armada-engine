@@ -1,0 +1,198 @@
+{
+  "world": "procedural",
+  "window": [
+    1280,
+    800
+  ],
+  "zoom": 3.2,
+  "phase": "day",
+  "centre": [
+    -12,
+    142
+  ],
+  "player": [
+    -12,
+    142
+  ],
+  "edits": [
+    {
+      "surface": {
+        "at": [
+          -9,
+          142
+        ],
+        "material": "grass"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          -9,
+          142
+        ],
+        "blueprint": "tree"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          -13,
+          147
+        ],
+        "blueprint": "rock_small"
+      }
+    }
+  ],
+  "steps": [
+    "settle",
+    {
+      "gather": {
+        "frames": 21
+      }
+    },
+    {
+      "shot": "chop-axe-0.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-axe-1.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-axe-2.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-axe-3.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-axe-4.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-axe-5.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-axe-6.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-axe-7.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "walk": {
+        "dir": [
+          -1,
+          1
+        ],
+        "frames": 25
+      }
+    },
+    {
+      "gather": {
+        "frames": 22
+      }
+    },
+    {
+      "shot": "chop-pickaxe-0.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-pickaxe-1.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-pickaxe-2.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-pickaxe-3.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-pickaxe-4.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-pickaxe-5.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-pickaxe-6.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    },
+    {
+      "shot": "chop-pickaxe-7.png"
+    },
+    {
+      "gather": {
+        "frames": 1
+      }
+    }
+  ],
+  "out": "shots",
+  "maxFrames": 900
+}

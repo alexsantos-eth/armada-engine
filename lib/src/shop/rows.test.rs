@@ -70,10 +70,10 @@ fn the_buy_tab_shows_the_shelf_and_greys_out_what_cannot_be_bought() {
     // Too poor for it: greyed out, with no words about why.
     assert_eq!(buy[1].note, None);
     assert!(!buy[1].enabled);
-    assert!(
-        buy.iter()
-            .all(|row| row.is_tool && row.icon.starts_with("tool_"))
-    );
+    // Each row shows the icon of the tool it sells, by tool id.
+    for (row, offer) in buy.iter().zip(market.offers()) {
+        assert_eq!(row.icon, offer.tool);
+    }
 }
 
 #[test]
@@ -109,7 +109,6 @@ fn choosing_a_row_trades_and_says_so() {
             tool: offer.tool.clone(),
         },
         icon: String::new(),
-        is_tool: true,
         name: offer.tool.clone(),
         detail: String::new(),
         coins: u64::from(offer.coins),

@@ -61,6 +61,8 @@ FUR = "#dcc6a2"
 # the trees of the bare ground: dry olive scrub leaf, and the char of a tree a lightning bolt split
 LEAF_DRY, CHAR = "#a39c46", "#4a423c"
 COPPER = "#a8532c"                                             # copper ore: the dropped item
+FLINT, COPPER_BRIGHT = "#59606b", "#df8c50"                    # the tools: a flint head, a copper edge
+HANDLE, NET, BONE_EDGE = "#9a6a3c", "#d9c58a", "#f4ecd2"       # a shaft's wood, the net's cord, a honed bone edge
 # New colours go at the end: the indices of the files already written must not move.
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
            RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK,
@@ -74,7 +76,7 @@ PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK,
            BONE, ASH, SOOT, RUSTED, THISTLE, THISTLE_HEAD, AMBER, STEEL,
            WAX, SINTER, HOT_WATER,
            SOIL_DEEP, SOIL_WET, CRACK, DEADWOOD, FUR,
-           LEAF_DRY, CHAR, COPPER]
+           LEAF_DRY, CHAR, COPPER, FLINT, COPPER_BRIGHT, HANDLE, NET, BONE_EDGE]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):

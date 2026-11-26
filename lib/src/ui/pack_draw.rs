@@ -4,12 +4,12 @@
 
 use macroquad::prelude::*;
 
-use super::draw::{draw_label, draw_piece, fit_size, rgb, text_width};
+use super::draw::{draw_icon, draw_label, draw_piece, fit_size, rgb, text_width};
 use super::frame::UiFrame;
 use super::hud::ClayHud;
 use super::layout::HudLayout;
 use super::pack::{PackLayout, PackTab};
-use super::shop::{centred, draw_piece_icon};
+use super::shop::centred;
 use super::skin::ClaySkin;
 
 fn draw_tool_row(skin: &ClaySkin, tool: &super::frame::UiTool, rect: Rect) {
@@ -18,7 +18,9 @@ fn draw_tool_row(skin: &ClaySkin, tool: &super::frame::UiTool, rect: Rect) {
     draw_piece(skin, "shop_row", rect, 1.0);
     let side = rect.h - 14.0;
     let icon_at = Rect::new(rect.x + 14.0, rect.y + 7.0, side, side);
-    draw_piece_icon(skin, &tool.piece, icon_at, 1.0);
+    if let Some(texture) = skin.items.get(&tool.icon) {
+        draw_icon(texture, icon_at, 1.0);
+    }
     let text_x = icon_at.x + side + 12.0;
     let mut room = rect.x + rect.w - 16.0 - text_x;
     if tool.count > 1 {

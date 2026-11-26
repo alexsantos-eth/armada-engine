@@ -6,7 +6,7 @@ Este dominio decide qué puede recolectar el jugador desde donde está y lleva e
 - **Trabajo** (`harvester.rs`): mientras se mantiene la tecla de recolectar sobre el mismo objetivo, cada tick fijo suma la velocidad de la mejor herramienta del tipo pedido (`tool_speed_tenths`). Soltar la tecla pausa el trabajo; cambiar de objetivo o perderlo de alcance empieza de cero. Sin la herramienta o el nivel pedidos el objetivo queda bloqueado y no avanza; un inventario lleno no lo bloquea: el rendimiento cae al suelo (`iso::drops`) y lo que no cabe espera ahí.
 - Al terminar (`HarvestStatus::Done`), quien llama saca la entidad del mundo (`ChunkManager::remove_entity_at`), pide a las sombras que borren la suya: solo las columnas donde podía caer (`shadow_area`, `HARVEST_SHADOW_SPAN`) se hornean otra vez, en parches pequeños copiados sobre el mapa de cada chunk (`iso::lighting::patch`), sin rehornear chunks enteros, y deja caer el rendimiento al suelo (`iso::drops::Drops::spawn`); la entidad quitada viaja con su chunk en el guardado, así que no vuelve al reabrir.
 
-- **Golpes** (`harvester.rs`): mientras se trabaja, el jugador golpea a un ritmo fijo, independiente de la herramienta: un golpe cada `HARVEST_STRIKE_TICKS` ticks, que cae en el tick `HARVEST_STRIKE_AT` (la pose de impacto de la hoja `gather` del jugador está en ese punto). `Harvester::swing` dice en qué tick del golpe va y `Harvester::strikes` cuenta los golpes dados, sin volver atrás, para que la vista note uno nuevo y sacuda la entidad y suelte astillas.
+- **Golpes** (`harvester.rs`): mientras se trabaja, el jugador golpea a un ritmo fijo, independiente de la herramienta: un golpe cada `HARVEST_STRIKE_TICKS` ticks, que cae en el tick `HARVEST_STRIKE_AT` (la pose de impacto de la hoja `gather` del jugador y de las hojas `chop_<herramienta>` está en ese punto). `Harvester::swing` dice en qué tick del golpe va y `Harvester::strikes` cuenta los golpes dados, sin volver atrás, para que la vista note uno nuevo y sacuda la entidad y suelte astillas.
 - **Astillas** (`chips.rs`): formas del polvo del jugador (`DustShape`) con el color del item que da el objetivo (`strike_chips`, y `felled_chips`, más y más amplias, cuando cae), y el punto del objetivo donde caen las manos (`strike_point`, `STRIKE_LIFT`).
 
 El trabajo en curso no se guarda: un objetivo a medias empieza de cero tras recargar. La fauna (NPC) todavía no se recolecta: los personajes nacen de la semilla y no se guardan, así que se rechaza en el catálogo.
@@ -60,6 +60,9 @@ El trabajo en curso no se guarda: un objetivo a medias empieza de cero tras reca
 
 - [`Harvester::step`](harvester.rs#L84) — Avanza la recolección `ticks` ticks con lo que lleva el jugador y dice qué pasó.
   - Firma: `pub fn step( &mut self, input: HarvestInput<'_>, carried: &Carried, items: &ItemCatalog, ) -> HarvestStatus {`
+
+- [`tool_in_hand`](harvester.rs#L182) — La herramienta que el jugador blande contra un blueprint: la mejor que lleva del tipo que pide su regla; `None` si se recolecta a mano o no la lleva.
+  - Firma: `pub fn tool_in_hand<'a>( blueprint: &str, carried: &Carried, items: &'a ItemCatalog, ) -> Option<&'a ToolDef> {`
 
 #### Constantes
 

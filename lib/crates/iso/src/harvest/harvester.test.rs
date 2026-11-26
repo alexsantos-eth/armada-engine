@@ -282,3 +282,25 @@ fn holding_the_key_on_a_target_out_of_reach_walks_up_to_it_first() {
         HarvestStatus::Working { progress: 10, .. }
     ));
 }
+
+#[test]
+fn the_tool_in_hand_is_the_best_of_the_kind_the_target_asks_for() {
+    let items = items();
+    let mut carried = Carried::starting(8, &items);
+    let held = |blueprint, carried: &Carried| {
+        tool_in_hand(blueprint, carried, &items).map(|tool| tool.id.clone())
+    };
+    assert_eq!(held("tree", &carried).as_deref(), Some("flint_axe"));
+    assert_eq!(
+        held("rock_small", &carried).as_deref(),
+        Some("stone_pickaxe")
+    );
+    carried.toolbelt.give("copper_pickaxe", &items);
+    assert_eq!(
+        held("rock_small", &carried).as_deref(),
+        Some("copper_pickaxe")
+    );
+    // Gathered by hand, or not gatherable at all: nothing is swung.
+    assert_eq!(held("tall_grass", &carried), None);
+    assert_eq!(held("castle", &carried), None);
+}

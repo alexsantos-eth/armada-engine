@@ -69,6 +69,8 @@ Este catálogo documenta las funciones, métodos y constantes exportados por est
   - Declaración: `pub const PLAYER_FLIP_SHEET: &str = "/assets/player-16/flip.png";`
 - [`PLAYER_GATHER_SHEET`](config.rs#L101) — Hoja del golpe con las dos manos del jugador que recolecta (`artifacts/vox/player/player_gather.py`).
   - Declaración: `pub const PLAYER_GATHER_SHEET: &str = "/assets/player-16/gather.png";`
+- [`chop_sheet`](config.rs#L105) — Hoja del jugador talando con una herramienta (`player-16/chop_<id>.png`, una por herramienta de `items.json`): el mismo golpe por encima de la cabeza con la herramienta en la mano derecha (`artifacts/vox/player/player_chop.py`).
+  - Firma: `pub fn chop_sheet(tool: &str) -> String {`
 - [`PLAYER_JETPACK_SHEET`](config.rs#L104) — El jetpack de la espalda: una columna por orientación, recortado donde el cuerpo de pie lo tapa, así que se dibuja sobre cualquier pose.
   - Declaración: `pub const PLAYER_JETPACK_SHEET: &str = "/assets/player-16/jetpack.png";`
 - [`PLAYER_JETPACK_DEPTH`](config.rs#L141) — Profundidad que se suma al jetpack sobre el cuerpo, para que la mochila se dibuje justo después de él.

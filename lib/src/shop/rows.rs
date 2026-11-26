@@ -2,7 +2,7 @@
 
 use iso::economy::{EconomyCatalog, Market, TradeError, Wallet, buy_tool, sell_item};
 use iso::inventory::Carried;
-use iso::items::{ItemCatalog, ToolKind};
+use iso::items::ItemCatalog;
 
 use super::session::Tab;
 
@@ -19,9 +19,8 @@ pub(crate) enum RowAction {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ShopRow {
     pub(crate) action: RowAction,
-    /// The item id (its icon) for a sale, or the kit's tool piece for a purchase.
+    /// The id of the item sold or the tool bought: its icon.
     pub(crate) icon: String,
-    pub(crate) is_tool: bool,
     pub(crate) name: String,
     /// What is on the row besides its name: the units carried or the tool's level.
     pub(crate) detail: String,
@@ -42,15 +41,6 @@ pub(crate) struct ShopStock<'a> {
     pub(crate) items: &'a ItemCatalog,
 }
 
-/// The kit piece that draws a tool of this family.
-pub(crate) const fn tool_piece(kind: ToolKind) -> &'static str {
-    match kind {
-        ToolKind::Axe => "tool_axe",
-        ToolKind::Pickaxe => "tool_pickaxe",
-        ToolKind::Net => "tool_net",
-    }
-}
-
 /// The rows of `tab`: what the player can sell (items villages pay for, summed over the slots,
 /// in the catalog's id order) or what is on today's shelf (cheapest first).
 pub(crate) fn rows(tab: Tab, stock: &ShopStock<'_>) -> Vec<ShopRow> {
@@ -68,7 +58,6 @@ pub(crate) fn rows(tab: Tab, stock: &ShopStock<'_>) -> Vec<ShopRow> {
                         item: id.to_owned(),
                     },
                     icon: id.to_owned(),
-                    is_tool: false,
                     name: def.name.clone(),
                     detail: format!("x{count}"),
                     coins: u64::from(unit) * u64::from(count),
@@ -89,8 +78,7 @@ pub(crate) fn rows(tab: Tab, stock: &ShopStock<'_>) -> Vec<ShopRow> {
                     action: RowAction::Buy {
                         tool: offer.tool.clone(),
                     },
-                    icon: tool_piece(tool.kind).to_owned(),
-                    is_tool: true,
+                    icon: tool.id.clone(),
                     name: tool.name.clone(),
                     detail: if owned > 0 {
                         format!("Nivel {} - Tienes {owned}", tool.tier)
