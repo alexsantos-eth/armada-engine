@@ -187,6 +187,10 @@ pub(crate) struct Game {
     pub(crate) drop_views: crate::harvest::drop_view::DropViews,
     /// The shake of what the player strikes and the bursts of chips due; view state.
     pub(crate) impacts: crate::harvest::impact::Impacts,
+    /// The pieces each gatherable entity is built from (`content/json/entity-parts.json`), and
+    /// the entities coming apart into them; view state.
+    pub(crate) entity_parts: iso::debris::PartsCatalog,
+    pub(crate) debris: crate::harvest::debris_view::DebrisView,
     /// Real time the wind has been blowing, for the sway of what reacts to it; accumulates
     /// frame time like the clouds and the dust, independent of the fixed step.
     pub(crate) wind_ms: f64,
@@ -348,6 +352,9 @@ impl Game {
 
         let items_json = include_str!("../../content/json/items.json");
         let items = iso::items::parse_items(items_json, &catalog).expect("item content validates");
+        let entity_parts =
+            iso::debris::parse_parts(include_str!("../../content/json/entity-parts.json"))
+                .expect("entity parts validate");
         let clay_skin =
             crate::ui::ClaySkin::load(client_path, items.item_ids().into_iter().map(str::to_owned))
                 .await;
@@ -586,6 +593,8 @@ impl Game {
             clay_skin,
             clay_hud: crate::ui::ClayHud::default(),
             impacts: crate::harvest::impact::Impacts::default(),
+            entity_parts,
+            debris: crate::harvest::debris_view::DebrisView::default(),
             drop_views: crate::harvest::drop_view::DropViews::landed(drops.list()),
             drops,
         }

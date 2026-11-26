@@ -74,6 +74,23 @@ piedras medianas `rock_medium` y `rock_medium_2`); sus modelos quedan en `artifa
 **el volumen entero de su huella** (128 × 128 × 170 para un árbol 1x1x2), con el pie en el
 centro del suelo de la casilla ancla: así el archivo dice dónde está plantado.
 
+### Cómo se arma, en JSON (`*.parts.json`)
+
+Cada modelo de `vox_models.py` y `vox_buildings.py` escribe junto a su `.vox` un
+`artifacts/vox/models/<nombre>.parts.json` con **las piezas del kit de las que se armó**: por pieza,
+su nombre (`trunk`, `leaf_block`…), el vóxel donde está plantada (`at`: el medio de su huella, sobre su
+punto más bajo, en vóxeles desde el pie de la casilla ancla) y sus cajas (`c` centro y `h` medios
+tamaños, en vóxeles desde `at`, y `color`). `vox_prefabs.piece()` marca cada instancia y `parts_of`
+las agrupa una vez colocadas con `moved`, `turned` y `spun`; una caja suelta del modelo cuenta como una
+pieza llamada `box`. `python3 vox_models.py --parts` escribe solo estos JSON y deja los `.vox` como
+están (el `.vox` versionado puede ir por detrás del generador).
+
+`python3 artifacts/vox/clay/vox_parts_pack.py` junta los de las entidades con regla de recolección en
+`items.json` en `lib/content/json/entity-parts.json`, que el juego lee (`iso::debris::parse_parts`) para
+hacer estallar la entidad en sus piezas al recolectarla. Se busca por el sprite (`tree/block_2`). Al
+añadir una entidad recolectable hay que regenerar los dos; el test
+`the_packed_entities_read_and_cover_every_harvestable_sprite` falla si falta alguna.
+
 `artifacts/vox/clay/vox_buildings.py` hace lo mismo con lo construido (las cinco piedras rúnicas,
 las tres casas y los edificios, los de dos casillas en sus dos orientaciones) con las piezas de
 piedra y de construcción: muros y tejados sobre el mismo módulo de 28.

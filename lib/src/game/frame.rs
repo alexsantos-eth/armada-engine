@@ -234,6 +234,14 @@ impl Game {
         {
             if taken.id() == target.id {
                 felled = Some(target.clone());
+                if let Some(parts) = self.entity_parts.of_sprite(taken.texture_source()) {
+                    self.debris.spawn(
+                        parts,
+                        target.anchor,
+                        target.elevation,
+                        iso::terrain::derive_seed(self.world_seed, &target.id),
+                    );
+                }
                 if let Some(shadows) = self.shadows.as_mut() {
                     shadows.erase(&self.manager, iso::harvest::shadow_area(target.anchor));
                 }

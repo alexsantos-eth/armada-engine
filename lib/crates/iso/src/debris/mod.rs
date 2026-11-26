@@ -1,0 +1,10 @@
+//! Debris: how an entity is built from the pieces of the voxel kit, and how those pieces fly
+//! apart when it is gathered.
+
+pub mod blast;
+pub mod faces;
+pub mod parts;
+
+pub use blast::*;
+pub use faces::*;
+pub use parts::*;

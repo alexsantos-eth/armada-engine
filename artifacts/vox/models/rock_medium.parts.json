@@ -1,0 +1,1 @@
+{"model":"rock_medium","asset":"rock/block_4","tiles":[1,1,1],"voxels":{"per_tile":128,"per_block":85},"parts":[{"piece":"rock_l","variant":"","at":[0.0,-2.0,0.0],"boxes":[{"c":[0.0,0.0,9.0],"h":[15.0,13.0,9.0],"color":"9a9a96"},{"c":[-2.0,-1.0,17.5],"h":[10.0,8.0,1.5],"color":"6f8f4a"}]}]}
