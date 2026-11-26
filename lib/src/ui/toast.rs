@@ -16,10 +16,8 @@ pub(crate) const MAX_TOASTS: usize = 4;
 /// The picture at the start of a toast.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ToastIcon {
-    /// An item's icon, by item id.
+    /// An item's or a tool's icon, by id.
     Item(String),
-    /// A tool's piece in the kit, by piece name (`tool_axe`…).
-    Piece(String),
 }
 
 /// Whether a toast reports or warns.

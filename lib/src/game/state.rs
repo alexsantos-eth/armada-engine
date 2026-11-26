@@ -348,9 +348,15 @@ impl Game {
 
         let items_json = include_str!("../../content/json/items.json");
         let items = iso::items::parse_items(items_json, &catalog).expect("item content validates");
-        let clay_skin =
-            crate::ui::ClaySkin::load(client_path, items.item_ids().into_iter().map(str::to_owned))
-                .await;
+        let clay_skin = crate::ui::ClaySkin::load(
+            client_path,
+            items
+                .item_ids()
+                .into_iter()
+                .chain(items.tool_ids())
+                .map(str::to_owned),
+        )
+        .await;
         let carried = match saved_systems.as_ref().and_then(|systems| {
             iso::inventory::saved_carried(systems, iso::inventory::STARTING_SLOTS, &items)
         }) {

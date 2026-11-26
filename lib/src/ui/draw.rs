@@ -217,6 +217,19 @@ fn draw_progress(skin: &ClaySkin, share: f32, name: Option<&str>, at: (f32, f32)
     }
 }
 
+/// The picture of a tool for the action button and the stick, and the room a drawing leaves
+/// around its shape, as a share of its side: a tool's own icon by id (`flint_axe`), else the kit's
+/// piece for it (the hand), whose padding hangs outside the square.
+fn tool_art<'a>(skin: &'a ClaySkin, tool: &str) -> Option<(&'a Texture2D, f32)> {
+    if let Some(texture) = skin.items.get(tool) {
+        return Some((texture, 0.0));
+    }
+    let name = format!("tool_{tool}");
+    let texture = skin.pieces.get(&name)?;
+    let piece = skin.manifest.pieces.get(&name)?;
+    Some((texture, piece.pad / skin.manifest.scale / 48.0))
+}
+
 fn draw_action(skin: &ClaySkin, hud: &ClayHud, action: &UiAction, frame: &UiFrame, rect: Rect) {
     let size = rect.w;
     let ink = rgb(skin.palette.ink, 1.0);
@@ -228,11 +241,7 @@ fn draw_action(skin: &ClaySkin, hud: &ClayHud, action: &UiAction, frame: &UiFram
     let pivot = (rect.x + size / 2.0, rect.y + size / 2.0);
     posed(pivot, scale, 0.0, offset, || {
         draw_piece(skin, piece, rect, 1.0);
-        let icon_name = format!("tool_{}", action.tool);
-        if let (Some(icon), Some(piece)) = (
-            skin.pieces.get(&icon_name),
-            skin.manifest.pieces.get(&icon_name),
-        ) {
+        if let Some((icon, room_share)) = tool_art(skin, &action.tool) {
             let side = size * 0.42;
             let label = size * 0.18;
             let block = side + 2.0 + label;
@@ -242,7 +251,7 @@ fn draw_action(skin: &ClaySkin, hud: &ClayHud, action: &UiAction, frame: &UiFram
             } else {
                 0.0
             };
-            let room = piece.pad / skin.manifest.scale * side / 48.0;
+            let room = room_share * side;
             posed(centre, (1.0, 1.0), turn, (0.0, 0.0), || {
                 draw_icon(
                     icon,
@@ -419,13 +428,11 @@ pub(crate) fn draw_clay_stick(
     let Some(tool) = tool else {
         return;
     };
-    let name = format!("tool_{tool}");
-    let (Some(icon), Some(piece)) = (skin.pieces.get(&name), skin.manifest.pieces.get(&name))
-    else {
+    let Some((icon, room_share)) = tool_art(skin, tool) else {
         return;
     };
     let side = k * 1.3;
-    let room = piece.pad / skin.manifest.scale * side / 48.0;
+    let room = room_share * side;
     let turn = if view.gathering {
         motion::chop_angle(clock_ms)
     } else {

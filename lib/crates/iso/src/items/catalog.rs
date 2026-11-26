@@ -124,6 +124,22 @@ impl ItemCatalog {
         self.tools.get(id)
     }
 
+    /// Every tool's id, sorted.
+    pub fn tool_ids(&self) -> Vec<&str> {
+        let mut ids: Vec<&str> = self.tools.keys().map(String::as_str).collect();
+        ids.sort_unstable();
+        ids
+    }
+
+    /// The simplest tool of a family: the lowest tier (the first by id among equals).
+    pub fn first_tool(&self, kind: ToolKind) -> Option<&ToolDef> {
+        self.tool_ids()
+            .into_iter()
+            .filter_map(|id| self.tools.get(id))
+            .filter(|tool| tool.kind == kind)
+            .min_by_key(|tool| tool.tier)
+    }
+
     /// The tools a new player lands with, in file order.
     pub fn starting_tools(&self) -> &[String] {
         &self.starting_tools

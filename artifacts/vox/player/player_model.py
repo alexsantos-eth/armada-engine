@@ -342,7 +342,7 @@ def render_cell(job):
     if name.startswith("chop_"):
         import player_chop
         cell = (CHOP_WINDOW[0], CHOP_WINDOW[1] + CANVAS_TOP, CHOP_WINDOW[2], CHOP_WINDOW[3])
-        tool = (name[len("chop_"):], player_chop.tool_dir(column))
+        tool = (name[len("chop_"):], player_chop.tool_dir(column, name))
     parts, yaw = poses_of("chop" if tool else name, frames)(row, column)
     return row, column, render(parts, yaw, cell, ease_arms=name == "idle", ease_legs=name in ("flip", "jump"),
                                tool=tool)

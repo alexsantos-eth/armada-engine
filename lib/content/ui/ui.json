@@ -191,27 +191,6 @@
       "pad": 24,
       "slice": 0
     },
-    "tool_axe": {
-      "file": "ui/tool_axe.png",
-      "width": 144,
-      "height": 144,
-      "pad": 24,
-      "slice": 0
-    },
-    "tool_pickaxe": {
-      "file": "ui/tool_pickaxe.png",
-      "width": 144,
-      "height": 144,
-      "pad": 24,
-      "slice": 0
-    },
-    "tool_net": {
-      "file": "ui/tool_net.png",
-      "width": 144,
-      "height": 144,
-      "pad": 24,
-      "slice": 0
-    },
     "tool_hand": {
       "file": "ui/tool_hand.png",
       "width": 144,

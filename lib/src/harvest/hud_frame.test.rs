@@ -67,7 +67,7 @@ fn a_tree_in_sight_is_felled_with_the_axe() {
         .unwrap();
     assert_eq!(
         (action.verb.as_str(), action.tool.as_str()),
-        ("Talar", "axe")
+        ("Talar", "flint_axe")
     );
 }
 
@@ -94,7 +94,7 @@ fn work_under_way_reports_its_share_and_where_it_sits() {
     let action = frame.action.unwrap();
     assert_eq!(
         (action.verb.as_str(), action.tool.as_str()),
-        ("Picar", "pickaxe")
+        ("Picar", "stone_pickaxe")
     );
 }
 
@@ -252,4 +252,27 @@ fn next_to_a_market_the_action_button_trades() {
     let action = frame.action.expect("the button shows next to a market");
     assert_eq!(action.verb, "Comerciar");
     assert_eq!(action.tool, "hand");
+}
+
+#[test]
+fn the_action_shows_the_best_tool_carried_of_the_family() {
+    let items = items();
+    let mut held = carried(&items);
+    held.toolbelt.give("copper_pickaxe", &items);
+    let status = HarvestStatus::Ready {
+        target: target("rock_small"),
+    };
+    let action = hud_frame(&held, &items, &status, None, false, None, false)
+        .action
+        .unwrap();
+    assert_eq!(action.tool, "copper_pickaxe");
+    let tools: Vec<_> = hud_frame(&held, &items, &status, None, false, None, false)
+        .tools
+        .into_iter()
+        .map(|tool| tool.icon)
+        .collect();
+    assert_eq!(
+        tools,
+        ["flint_axe", "stone_pickaxe", "fiber_net", "copper_pickaxe"]
+    );
 }

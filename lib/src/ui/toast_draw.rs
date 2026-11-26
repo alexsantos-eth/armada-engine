@@ -5,7 +5,6 @@
 use macroquad::prelude::*;
 
 use super::draw::{draw_icon, draw_label, draw_piece, fit_size, rgb, text_width};
-use super::shop::draw_piece_icon;
 use super::skin::ClaySkin;
 use super::toast::{Toast, ToastIcon, ToastKind, Toasts, toast_pose};
 
@@ -65,7 +64,6 @@ fn draw_toast(skin: &ClaySkin, toast: &Toast, top: f32) {
                 draw_icon(texture, icon_at, pose.alpha);
             }
         }
-        ToastIcon::Piece(name) => draw_piece_icon(skin, name, icon_at, pose.alpha),
     }
     let mut x = icon_at.x + ICON + 10.0;
     let size = toast_text_size(skin, toast);
