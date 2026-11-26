@@ -99,6 +99,12 @@ pub const PLAYER_SWIM_SHEET: &str = "/assets/player-16/swim.png";
 pub const PLAYER_FLIP_SHEET: &str = "/assets/player-16/flip.png";
 /// The blow of a gathering player, both hands brought down on what is in reach.
 pub const PLAYER_GATHER_SHEET: &str = "/assets/player-16/gather.png";
+/// The sheet of a player chopping with tool `tool` (an id of `items.json`): the same overhead
+/// blow for every tool, one column per step of it, with the tool drawn in the right hand
+/// (`artifacts/vox/player/player_chop.py`, one sheet per tool).
+pub fn chop_sheet(tool: &str) -> String {
+    format!("/assets/player-16/chop_{tool}.png")
+}
 /// The jetpack on the player's back: one column per facing, cut where the standing body hides
 /// it, so it is drawn over whatever pose the body is in.
 pub const PLAYER_JETPACK_SHEET: &str = "/assets/player-16/jetpack.png";

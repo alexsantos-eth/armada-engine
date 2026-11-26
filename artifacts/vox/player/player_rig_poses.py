@@ -25,7 +25,10 @@ from player_walk import FACINGS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "player_rig", "poses.json")
-SHEETS = ["idle", "walk", "jump", "climb", "flip", "swim", "gather"]
+SHEETS = ["idle", "walk", "jump", "climb", "flip", "swim", "gather", "chop"]
+# Sheets whose geometry (cell, frames, facings) is read off another sheet's sidecar: the chop
+# poses are shared by one sheet per tool (`chop_<tool id>`).
+GRID = {"chop": "chop_flint_axe"}
 ANKLE = (4, 16)
 
 
@@ -82,13 +85,23 @@ def cell_pose(parts):
     return out
 
 
-def main():
+def main(names):
+    """Writes the poses of `names` (every sheet when none): the other sheets already in the file
+    are kept, so one sheet can be added without redoing the rest."""
     data = {"facings": len(FACINGS), "hip": [monkey.HIP[0], 0, monkey.HIP[1]],
             "ankle": [ANKLE[0], 0, ANKLE[1]], "sheets": {}}
-    for name in SHEETS:
-        _, frames, rows = grid_of(name)
+    if names and os.path.exists(OUT):
+        with open(OUT, encoding="utf-8") as file:
+            data = json.load(file)
+    for name in names or SHEETS:
+        _, frames, rows = grid_of(GRID.get(name, name))
         pose = poses_of(name, frames)
         data["sheets"][name] = [[cell_pose(pose(r, c)[0]) for c in range(frames)] for r in range(rows)]
+        if name == "chop":
+            import player_chop
+            for row in data["sheets"][name]:
+                for column, cell in enumerate(row):
+                    cell["tool_dir"] = list(player_chop.tool_dir(column))
         missing = {k for row in data["sheets"][name] for cell in row
                    for k in ("body", "head", "arm+1", "arm-1", "leg+1", "leg-1") if k not in cell}
         print("ok", name, rows, "x", frames, "missing" if missing else "", *sorted(missing))
@@ -98,4 +111,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main(sys.argv[1:])

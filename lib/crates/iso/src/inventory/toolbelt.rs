@@ -1,6 +1,6 @@
 //! The tools the player carries: equipment kept apart from the slots, never lost on death.
 
-use crate::items::{ItemCatalog, ToolKind};
+use crate::items::{ItemCatalog, ToolDef, ToolKind};
 
 /// The carried tools, one id per unit, in the order they were gained. A tool can be bought
 /// again: each unit is one more entry, and `owned` counts them like an item's stack.
@@ -58,6 +58,18 @@ impl Toolbelt {
         }
         self.tools.push(id.to_owned());
         true
+    }
+
+    /// The best tool carried of `kind`: the highest tier, the one gained first among equals.
+    pub fn best<'a>(&self, kind: ToolKind, items: &'a ItemCatalog) -> Option<&'a ToolDef> {
+        self.tools
+            .iter()
+            .filter_map(|id| items.tool(id))
+            .filter(|tool| tool.kind == kind)
+            .fold(None, |best: Option<&'a ToolDef>, tool| match best {
+                Some(held) if held.tier >= tool.tier => Some(held),
+                _ => Some(tool),
+            })
     }
 
     /// The highest tier carried of `kind`.

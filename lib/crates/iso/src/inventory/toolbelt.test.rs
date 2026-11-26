@@ -24,6 +24,30 @@ fn the_best_tier_of_a_kind_wins() {
 }
 
 #[test]
+fn the_best_tool_of_a_kind_is_the_one_in_hand() {
+    let mut belt = Toolbelt::starting(&items());
+    assert_eq!(
+        belt.best(ToolKind::Axe, &items())
+            .map(|tool| tool.id.as_str()),
+        Some("flint_axe")
+    );
+    assert!(belt.give("copper_pickaxe", &items()));
+    assert_eq!(
+        belt.best(ToolKind::Pickaxe, &items())
+            .map(|tool| tool.id.as_str()),
+        Some("copper_pickaxe")
+    );
+    // A second unit of a lower tier does not take its place.
+    assert!(belt.give("stone_pickaxe", &items()));
+    assert_eq!(
+        belt.best(ToolKind::Pickaxe, &items())
+            .map(|tool| tool.id.as_str()),
+        Some("copper_pickaxe")
+    );
+    assert!(belt.best(ToolKind::Net, &items()).is_none());
+}
+
+#[test]
 fn a_tool_must_exist_and_can_be_carried_more_than_once() {
     let mut belt = Toolbelt::starting(&items());
     assert!(!belt.give("laser", &items()));

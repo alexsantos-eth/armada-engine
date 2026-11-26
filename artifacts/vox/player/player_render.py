@@ -34,6 +34,7 @@ import player_climb
 import player_flip
 import player_swim
 import player_gather
+import player_chop
 from iso_lib import CX, CY
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -88,7 +89,7 @@ def poses_of(name, frames):
 
     return {"walk": walk, "idle": idle, "jump": by_index(player_jump), "climb": by_index(player_climb),
             "flip": by_index(player_flip), "swim": by_index(player_swim),
-            "gather": by_index(player_gather)}[name]
+            "gather": by_index(player_gather), "chop": by_index(player_chop)}[name]
 
 
 def boxes(parts, yaw):

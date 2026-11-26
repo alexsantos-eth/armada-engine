@@ -24,7 +24,7 @@ use crate::game::config::{
     BAND_BLEED, ENTITY_LAYER, NpcArt, PLAYER_BEHIND_LAYER, PLAYER_CLIMB_SHEET, PLAYER_FLIP_SHEET,
     PLAYER_FRONT_LAYER, PLAYER_GATHER_SHEET, PLAYER_IDLE_SHEET, PLAYER_JETPACK_DEPTH,
     PLAYER_JETPACK_SHEET, PLAYER_JUMP_SHEET, PLAYER_SCALE, PLAYER_SWIM_SHEET, PLAYER_WALK_SHEET,
-    PLAYER_XRAY, SceneMetrics,
+    PLAYER_XRAY, SceneMetrics, chop_sheet,
 };
 use crate::game::frame::FrameView;
 use crate::game::ground::WaterField;
@@ -904,6 +904,14 @@ impl Game {
         let climbing = get_player_climb_progress(&self.player, self.stepper.interpolation_alpha());
         let moved = (rp.x - self.drawn_at.0).hypot(rp.y - self.drawn_at.1);
         let struck = self.struck_target();
+        // Swinging a tool, the player strikes with the chop sheet of the one it holds (its right
+        // hand, always); with bare hands, or a tool whose sheet is missing, it punches.
+        let chop = struck.as_ref().and_then(|target| {
+            let tool = iso::harvest::tool_in_hand(&target.blueprint, &self.carried, &self.items)?;
+            let source = chop_sheet(&tool.id);
+            let columns = self.atlas.sheet(&source)?.columns();
+            Some((source, columns as i32))
+        });
         let gather = struck.as_ref().map(|_| {
             let alpha = self.stepper.interpolation_alpha();
             let swing = (f64::from(self.harvester.swing()) + alpha)
@@ -912,7 +920,11 @@ impl Game {
             // half. A blow counts in `strikes` once it lands, so one past its landing is still it.
             let landed = u64::from(self.harvester.swing() >= iso::harvest::HARVEST_STRIKE_AT);
             let blow = self.harvester.strikes().wrapping_sub(landed) % 2;
-            (blow as f64 + swing) / 2.0
+            if chop.is_some() {
+                swing
+            } else {
+                (blow as f64 + swing) / 2.0
+            }
         });
         let pose = self.animation.advance(
             PlayerMoment {
@@ -935,7 +947,13 @@ impl Game {
                 flip,
                 elapsed_ms: frame_ms,
             },
-            self.sheets,
+            crate::player::player_view::PlayerSheets {
+                gather_poses: chop
+                    .as_ref()
+                    .map(|(_, columns)| *columns)
+                    .or(self.sheets.gather_poses),
+                ..self.sheets
+            },
         );
         let velocity = self.player.velocity;
         let previous = self.player.previous.velocity;
@@ -964,7 +982,9 @@ impl Game {
             PlayerSheet::Climb => PLAYER_CLIMB_SHEET,
             PlayerSheet::Swim => PLAYER_SWIM_SHEET,
             PlayerSheet::Flip => PLAYER_FLIP_SHEET,
-            PlayerSheet::Gather => PLAYER_GATHER_SHEET,
+            PlayerSheet::Gather => chop
+                .as_ref()
+                .map_or(PLAYER_GATHER_SHEET, |(source, _)| source.as_str()),
         });
         let drawn = match (sheet, self.player_asset) {
             (Some(sheet), _) => Some((

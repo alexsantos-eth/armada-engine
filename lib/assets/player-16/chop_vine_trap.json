@@ -1,0 +1,34 @@
+{
+  "frames": 8,
+  "gap": 48.0,
+  "cell": [
+    188.0,
+    169.0,
+    648.0,
+    602.0
+  ],
+  "facings": [
+    "east",
+    "east-north-east",
+    "north-east",
+    "north-north-east",
+    "north",
+    "north-north-west",
+    "north-west",
+    "west-north-west",
+    "west",
+    "west-south-west",
+    "south-west",
+    "south-south-west",
+    "south",
+    "south-south-east",
+    "south-east",
+    "east-south-east"
+  ],
+  "ink": {
+    "x": -0.316406,
+    "y": -0.417969,
+    "width": 0.632812,
+    "height": 0.587891
+  }
+}

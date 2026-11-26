@@ -54,7 +54,9 @@ El inventario no decide qué se recolecta ni cuándo: eso es `iso::harvest`. Las
   - Firma: `pub fn tools(&self) -> &[String] {`
 - [`Toolbelt::give`](toolbelt.rs#L37) — Añade una herramienta y dice si era nueva y está declarada.
   - Firma: `pub fn give(&mut self, id: &str, items: &ItemCatalog) -> bool {`
-- [`Toolbelt::best_tier`](toolbelt.rs#L46) — El nivel más alto que lleva de un tipo.
+- [`Toolbelt::best`](toolbelt.rs#L64) — La mejor herramienta que lleva de un tipo (nivel más alto; entre iguales, la primera que ganó): la que el jugador empuña.
+  - Firma: `pub fn best<'a>(&self, kind: ToolKind, items: &'a ItemCatalog) -> Option<&'a ToolDef> {`
+- [`Toolbelt::best_tier`](toolbelt.rs#L76) — El nivel más alto que lleva de un tipo.
   - Firma: `pub fn best_tier(&self, kind: ToolKind, items: &ItemCatalog) -> Option<u8> {`
 
 #### Tipos
