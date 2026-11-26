@@ -1,6 +1,8 @@
 //! The items lying on the ground: what a felling drops around where it stood, picked up by
 //! walking over them, kept in their own part of a save.
 
+use super::pieces::PiecePick;
+use crate::debris::{EntityParts, blast, model_to_grid, rest_of};
 use crate::grid::WorldCoord;
 use crate::harvest::Feet;
 use crate::inventory::Inventory;
@@ -10,6 +12,9 @@ use crate::terrain::derive_seed;
 
 /// Farthest, in columns, a heap lands from the centre of what dropped it.
 pub const DROP_SCATTER: f64 = 0.35;
+
+/// Farthest, in columns, a floating piece lies from the middle of what it came off.
+pub const PIECE_SCATTER: f64 = 1.3;
 
 /// Farthest the player's feet may be from a heap, in columns, to pick it up.
 pub const PICKUP_REACH: f64 = 0.55;
@@ -42,6 +47,20 @@ pub struct Drop {
     /// Fixed ticks left before it can be picked up.
     #[serde(default)]
     pub wait: u32,
+    /// The voxel piece it is, when it came off a piece of what was felled instead of a plain heap:
+    /// it floats where it landed, drawn with the piece's own sprite.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub piece: Option<DropPiece>,
+}
+
+/// What a floating piece looks like.
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct DropPiece {
+    /// The piece's sprite, `debris/p_<hash>`.
+    pub sprite: String,
+    /// Columns along x and y a wide piece's sprite was rendered off its foot (`iso::debris::Part`).
+    #[serde(default)]
+    pub shift: [f64; 2],
 }
 
 /// What was gathered, as the drop needs it.
@@ -109,6 +128,57 @@ impl Drops {
                 elevation: f64::from(felled.elevation),
                 from,
                 wait: PICKUP_DELAY_TICKS,
+                piece: None,
+            });
+            self.next_id += 1;
+        }
+    }
+
+    /// Leaves each of `plan`'s picks floating where its piece of `parts` comes to rest when the
+    /// blast of `seed` throws it, carrying its units. Where it lands is clamped to
+    /// [`PIECE_SCATTER`] columns from the anchor, so it is always within reach.
+    pub fn spawn_pieces(
+        &mut self,
+        felled: Felled<'_>,
+        parts: &EntityParts,
+        seed: u64,
+        picks: &[PiecePick],
+    ) {
+        let fragments = blast(parts, seed);
+        let from = GridPoint {
+            x: f64::from(felled.anchor.x),
+            y: f64::from(felled.anchor.y),
+        };
+        for pick in picks {
+            let (Some(fragment), Some(part)) =
+                (fragments.get(pick.part), parts.parts.get(pick.part))
+            else {
+                continue;
+            };
+            let [mut across, mut up] = rest_of(fragment);
+            let length = across.hypot(up);
+            if length > PIECE_SCATTER {
+                (across, up) = (across * PIECE_SCATTER / length, up * PIECE_SCATTER / length);
+            }
+            let start = fragment.start;
+            self.list.push(Drop {
+                id: self.next_id,
+                item: pick.item.clone(),
+                amount: pick.amount,
+                at: GridPoint {
+                    x: from.x + across,
+                    y: from.y + up,
+                },
+                elevation: f64::from(felled.elevation),
+                from: GridPoint {
+                    x: from.x + start[0],
+                    y: from.y + start[1],
+                },
+                wait: PICKUP_DELAY_TICKS,
+                piece: Some(DropPiece {
+                    sprite: part.sprite.clone(),
+                    shift: model_to_grid_pair(part.shift),
+                }),
             });
             self.next_id += 1;
         }
@@ -167,6 +237,12 @@ impl Drops {
         self.list.retain(|drop| drop.amount > 0);
         collected
     }
+}
+
+/// The columns a wide piece's `shift` (model voxels) moves its sprite by.
+fn model_to_grid_pair(shift: [f64; 2]) -> [f64; 2] {
+    let moved = model_to_grid(shift[0], shift[1]);
+    [moved.x, moved.y]
 }
 
 /// A 64-bit hash as a share of one, `0.0..1.0`.

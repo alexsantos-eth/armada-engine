@@ -47,7 +47,7 @@ fn the_frame_lists_every_slot_with_names() {
     let first = frame.slots[0].as_ref().unwrap();
     assert_eq!(
         (first.item.as_str(), first.name.as_str(), first.count),
-        ("wood", "Madera", 7)
+        ("wood", "Tronco", 7)
     );
     assert!(frame.slots[1..].iter().all(Option::is_none));
     assert_eq!(frame.action, None);
@@ -90,7 +90,7 @@ fn work_under_way_reports_its_share_and_where_it_sits() {
     );
     assert_eq!(frame.progress, Some(0.33));
     assert_eq!(frame.progress_at, Some((10.0, 20.0)));
-    assert_eq!(frame.progress_name, Some("Piedra".into()));
+    assert_eq!(frame.progress_name, Some("Roca".into()));
     let action = frame.action.unwrap();
     assert_eq!(
         (action.verb.as_str(), action.tool.as_str()),
@@ -145,7 +145,7 @@ fn only_the_full_inventory_note_reaches_the_kit() {
         &carried(&items),
         &items,
         &HarvestStatus::Idle,
-        Some("+3 Madera"),
+        Some("+3 Tronco"),
         false,
         None,
         false,

@@ -2,6 +2,7 @@
 //! their part of a save.
 
 use super::*;
+use crate::drops::plan_pieces;
 use crate::inventory::Inventory;
 use crate::items::catalog::tests::{catalog_json, entities};
 use crate::items::{HarvestYield, ItemCatalog, parse_items};
@@ -221,4 +222,64 @@ fn a_legacy_heap_keeps_its_amount_when_restored_and_picked_up() {
         yields(&[("wood", 3)])
     );
     assert!(drops.list().is_empty());
+}
+
+fn tree_parts() -> EntityParts {
+    let part = |piece: &str, at: [f64; 3]| crate::debris::Part {
+        piece: piece.to_owned(),
+        at,
+        sprite: format!("debris/p_{piece}"),
+        shift: [0.0, 0.0],
+    };
+    EntityParts {
+        tiles: [1, 1, 2],
+        parts: vec![
+            part("trunk", [0.0, 0.0, 0.0]),
+            part("trunk", [0.0, 0.0, 85.0]),
+            part("branch", [30.0, 0.0, 85.0]),
+            part("leaf_block", [0.0, 40.0, 170.0]),
+        ],
+    }
+}
+
+#[test]
+fn a_piece_drop_floats_where_its_piece_lands_within_reach() {
+    let parts = tree_parts();
+    let plan = plan_pieces(&parts, &yields(&[("wood", 2)]), &items(), 11);
+    let mut drops = Drops::default();
+    drops.spawn_pieces(felled(), &parts, 11, &plan.picks);
+    assert_eq!(drops.list().len(), 2);
+    for drop in drops.list() {
+        let piece = drop.piece.as_ref().expect("a piece drop names its sprite");
+        assert!(piece.sprite.starts_with("debris/p_"));
+        assert_eq!((drop.item.as_str(), drop.amount), ("wood", 1));
+        let off = (drop.at.x - 4.0).hypot(drop.at.y - 7.0);
+        assert!(off <= PIECE_SCATTER + 1e-9, "{off} columns is out of reach");
+        assert_eq!(drop.wait, PICKUP_DELAY_TICKS);
+    }
+    let mut again = Drops::default();
+    again.spawn_pieces(felled(), &parts, 11, &plan.picks);
+    assert_eq!(
+        again.list(),
+        drops.list(),
+        "the same felling lands the same"
+    );
+}
+
+#[test]
+fn a_piece_drop_is_saved_and_read_back_and_an_old_heap_still_loads() {
+    let parts = tree_parts();
+    let plan = plan_pieces(&parts, &yields(&[("wood", 1)]), &items(), 3);
+    let mut drops = Drops::default();
+    drops.spawn_pieces(felled(), &parts, 3, &plan.picks);
+    drops.spawn(felled(), &yields(&[("stone", 1)]));
+    let written = with_drops(serde_json::json!({}), &drops);
+    assert_eq!(
+        saved_drops(&written, &items()).unwrap().list(),
+        drops.list()
+    );
+    assert!(
+        written["drops"]["drops"][1].get("piece").is_none(),
+        "a plain heap writes no piece, as before"
+    );
 }

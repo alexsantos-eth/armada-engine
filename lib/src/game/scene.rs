@@ -1130,17 +1130,33 @@ impl Game {
             if !self.manager.is_visible(iso::grid::to_chunk_coord(column)) {
                 continue;
             }
-            let Some(sprite) = self
-                .items
-                .item(&drop.item)
-                .and_then(|item| item.sprite.as_deref())
-            else {
+            // A voxel piece is drawn with its own sprite, a heap with its item's.
+            let piece_source = drop
+                .piece
+                .as_ref()
+                .map(|piece| format!("/assets/{}.png", piece.sprite));
+            let Some(sprite) = piece_source.as_deref().or_else(|| {
+                self.items
+                    .item(&drop.item)
+                    .and_then(|item| item.sprite.as_deref())
+            }) else {
                 continue;
             };
             let pose = crate::harvest::drop_view::toss(self.drop_views.age(drop.id), drop);
             let ground = player_feet(pose.at, drop.elevation, projection);
+            // A wide piece's sprite was rendered moved off its foot: its foot goes back by that.
+            let foot = drop.piece.as_ref().map_or(ground, |piece| {
+                player_feet(
+                    GridPoint {
+                        x: pose.at.x - piece.shift[0],
+                        y: pose.at.y - piece.shift[1],
+                    },
+                    drop.elevation,
+                    projection,
+                )
+            });
             let Some((frame, mut layout)) =
-                self.atlas.standing(sprite, ground, projection.tile_width)
+                self.atlas.standing(sprite, foot, projection.tile_width)
             else {
                 continue;
             };

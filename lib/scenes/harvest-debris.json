@@ -19,7 +19,9 @@
     {"wait": {"frames": 4}},
     {"shot": "debris-3-landing.png"},
     {"wait": {"frames": 8}},
-    {"shot": "debris-4-landed.png"}
+    {"shot": "debris-4-landed.png"},
+    {"wait": {"frames": 140}},
+    {"shot": "debris-5-pieces-floating.png"}
   ],
   "out": "shots-harvest-debris",
   "maxFrames": 1600

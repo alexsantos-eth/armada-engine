@@ -21,7 +21,7 @@ fn tree() -> EntityParts {
 
 fn spawned() -> DebrisView {
     let mut view = DebrisView::default();
-    view.spawn(&tree(), WorldCoord { x: 4, y: 7 }, 2, 11);
+    view.spawn(&tree(), WorldCoord { x: 4, y: 7 }, 2, 11, &[]);
     view
 }
 
@@ -73,6 +73,7 @@ fn only_so_many_entities_come_apart_at_once() {
             },
             0,
             1,
+            &[],
         );
     }
     assert_eq!(view.live(), MAX_BLASTS);
@@ -102,10 +103,23 @@ fn a_wide_piece_is_drawn_back_from_where_it_stands_by_how_far_its_sprite_was_mov
     let mut parts = tree();
     parts.parts[0].shift = [64.0, 64.0];
     let mut view = DebrisView::default();
-    view.spawn(&parts, WorldCoord { x: 0, y: 0 }, 0, 1);
+    view.spawn(&parts, WorldCoord { x: 0, y: 0 }, 0, 1, &[]);
     let placed = view.blasts[0].placed();
     // The sprite's foot is where the piece was moved to: back by that, to land it where it stands.
     let back = ground_of(64.0, 64.0);
     assert!((placed[0].at[0] - (0.5 - back.x)).abs() < 1e-9);
     assert!((placed[0].at[1] - (0.5 - back.y)).abs() < 1e-9);
+}
+
+#[test]
+fn the_pieces_that_stay_as_items_are_not_part_of_the_fading_blast() {
+    let mut view = DebrisView::default();
+    let mut all = DebrisView::default();
+    all.spawn(&tree(), WorldCoord { x: 0, y: 0 }, 0, 3, &[]);
+    view.spawn(&tree(), WorldCoord { x: 0, y: 0 }, 0, 3, &[0]);
+    assert_eq!(
+        view.blasts[0].fragments.len() + 1,
+        all.blasts[0].fragments.len()
+    );
+    assert!(view.blasts[0].fragments.iter().all(|f| f.part != 0));
 }

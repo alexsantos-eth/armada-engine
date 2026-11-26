@@ -51,8 +51,8 @@ pub(crate) fn catalog_json() -> &'static str {
     r#"{
         "schemaVersion": 1,
         "items": [
-            { "id": "wood", "name": "Madera", "stack": 50, "rarity": "common", "color": "a0703c", "sprite": "/assets/items/wood.png" },
-            { "id": "stone", "name": "Piedra", "stack": 50, "rarity": "common" },
+            { "id": "wood", "name": "Madera", "stack": 50, "rarity": "common", "color": "a0703c", "sprite": "/assets/items/wood.png", "pieces": ["trunk", "branch"] },
+            { "id": "stone", "name": "Piedra", "stack": 50, "rarity": "common", "pieces": ["rock_s"] },
             { "id": "fiber", "name": "Fibra", "stack": 99, "rarity": "common" },
             { "id": "copper_ore", "name": "Cobre", "stack": 30, "rarity": "rare" }
         ],

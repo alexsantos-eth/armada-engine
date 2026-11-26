@@ -11,6 +11,7 @@ fn drop_at(id: u64) -> Drop {
         elevation: 2.0,
         from: GridPoint { x: 4.0, y: 7.0 },
         wait: 0,
+        piece: None,
     }
 }
 
