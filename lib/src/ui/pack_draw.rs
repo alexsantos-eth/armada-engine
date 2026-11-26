@@ -4,7 +4,7 @@
 
 use macroquad::prelude::*;
 
-use super::draw::{draw_label, draw_piece, rgb, text_width};
+use super::draw::{draw_label, draw_piece, fit_size, rgb, text_width};
 use super::frame::UiFrame;
 use super::hud::ClayHud;
 use super::layout::HudLayout;
@@ -20,11 +20,30 @@ fn draw_tool_row(skin: &ClaySkin, tool: &super::frame::UiTool, rect: Rect) {
     let icon_at = Rect::new(rect.x + 14.0, rect.y + 7.0, side, side);
     draw_piece_icon(skin, &tool.piece, icon_at, 1.0);
     let text_x = icon_at.x + side + 12.0;
+    let mut room = rect.x + rect.w - 16.0 - text_x;
+    if tool.count > 1 {
+        let count = format!("x{}", tool.count);
+        let width = text_width(skin, &count, 26.0);
+        draw_label(
+            skin,
+            &count,
+            (
+                rect.x + rect.w - 16.0 - width,
+                rect.y + (rect.h - 26.0) / 2.0,
+            ),
+            26.0,
+            ink,
+            ink,
+            0.0,
+        );
+        room -= width + 10.0;
+    }
+    let name_size = fit_size(skin, &tool.name, 24.0, room);
     draw_label(
         skin,
         &tool.name,
         (text_x, rect.y + 7.0),
-        24.0,
+        name_size,
         ink,
         ink,
         0.0,

@@ -2,7 +2,8 @@
 
 use crate::items::{ItemCatalog, ToolKind};
 
-/// The ids of the carried tools, in the order they were gained.
+/// The carried tools, one id per unit, in the order they were gained. A tool can be bought
+/// again: each unit is one more entry, and `owned` counts them like an item's stack.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Toolbelt {
     tools: Vec<String>,
@@ -21,21 +22,38 @@ impl Toolbelt {
         let mut belt = Self::default();
         let mut dropped = Vec::new();
         for id in saved {
-            if !belt.give(&id, items) && items.tool(&id).is_none() {
+            if !belt.give(&id, items) {
                 dropped.push(id);
             }
         }
         (belt, dropped)
     }
 
-    /// The carried tool ids.
+    /// The carried tool ids, once per unit.
     pub fn tools(&self) -> &[String] {
         &self.tools
     }
 
-    /// Adds the tool `id`, and says whether it was new and declared.
+    /// How many units of the tool `id` are carried.
+    pub fn count(&self, id: &str) -> u32 {
+        self.tools.iter().filter(|tool| *tool == id).count() as u32
+    }
+
+    /// The distinct tools carried with how many of each, in the order each was first gained.
+    pub fn owned(&self) -> Vec<(&str, u32)> {
+        let mut owned: Vec<(&str, u32)> = Vec::new();
+        for id in &self.tools {
+            match owned.iter_mut().find(|(have, _)| have == id) {
+                Some((_, count)) => *count += 1,
+                None => owned.push((id, 1)),
+            }
+        }
+        owned
+    }
+
+    /// Adds one unit of the tool `id`, and says whether the catalog declares it.
     pub fn give(&mut self, id: &str, items: &ItemCatalog) -> bool {
-        if items.tool(id).is_none() || self.tools.iter().any(|tool| tool == id) {
+        if items.tool(id).is_none() {
             return false;
         }
         self.tools.push(id.to_owned());

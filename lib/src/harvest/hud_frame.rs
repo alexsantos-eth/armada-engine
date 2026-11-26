@@ -95,13 +95,14 @@ pub(crate) fn hud_frame(
             .collect(),
         tools: carried
             .toolbelt
-            .tools()
-            .iter()
-            .filter_map(|id| items.tool(id))
-            .map(|tool| UiTool {
+            .owned()
+            .into_iter()
+            .filter_map(|(id, count)| items.tool(id).map(|tool| (tool, count)))
+            .map(|(tool, count)| UiTool {
                 piece: crate::shop::tool_piece(tool.kind).to_owned(),
                 name: tool.name.clone(),
                 tier: tool.tier,
+                count,
             })
             .collect(),
         progress,

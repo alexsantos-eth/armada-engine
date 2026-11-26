@@ -23,6 +23,8 @@ pub(crate) struct UiTool {
     pub(crate) piece: String,
     pub(crate) name: String,
     pub(crate) tier: u8,
+    /// How many of it are carried.
+    pub(crate) count: u32,
 }
 
 /// What the HUD shows this frame.

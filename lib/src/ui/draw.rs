@@ -99,6 +99,16 @@ pub(super) fn draw_icon(texture: &Texture2D, rect: Rect, alpha: f32) {
     );
 }
 
+/// The largest font size up to `size` at which `text` fits in `room` pixels, never below a
+/// readable minimum, so a long name shrinks instead of running under its neighbour.
+pub(super) fn fit_size(skin: &ClaySkin, text: &str, size: f32, room: f32) -> f32 {
+    let width = text_width(skin, text, size);
+    if width <= room || width <= 0.0 {
+        return size;
+    }
+    (size * room / width).floor().max(size * 0.6).max(10.0)
+}
+
 pub(super) fn text_width(skin: &ClaySkin, text: &str, size: f32) -> f32 {
     measure_text(text, Some(&skin.display), size as u16, 1.0).width
 }

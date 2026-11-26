@@ -83,12 +83,7 @@ pub(crate) fn rows(tab: Tab, stock: &ShopStock<'_>) -> Vec<ShopRow> {
             .iter()
             .filter_map(|offer| {
                 let tool = stock.items.tool(&offer.tool)?;
-                let owned = stock
-                    .carried
-                    .toolbelt
-                    .tools()
-                    .iter()
-                    .any(|have| have == &offer.tool);
+                let owned = stock.carried.toolbelt.count(&offer.tool);
                 let poor = stock.wallet.coins() < u64::from(offer.coins);
                 Some(ShopRow {
                     action: RowAction::Buy {
@@ -97,11 +92,15 @@ pub(crate) fn rows(tab: Tab, stock: &ShopStock<'_>) -> Vec<ShopRow> {
                     icon: tool_piece(tool.kind).to_owned(),
                     is_tool: true,
                     name: tool.name.clone(),
-                    detail: format!("Nivel {}", tool.tier),
+                    detail: if owned > 0 {
+                        format!("Nivel {} - Tienes {owned}", tool.tier)
+                    } else {
+                        format!("Nivel {}", tool.tier)
+                    },
                     coins: u64::from(offer.coins),
-                    enabled: !owned && !poor,
                     // A tool that costs too much is only greyed out: no text says why.
-                    note: owned.then_some("Ya la tienes"),
+                    enabled: !poor,
+                    note: None,
                 })
             })
             .collect(),
@@ -152,7 +151,6 @@ const fn refusal(error: TradeError) -> &'static str {
     match error {
         TradeError::NothingToSell => "No hay nada que vender",
         TradeError::NotOffered => "Ya no esta en venta",
-        TradeError::AlreadyOwned => "Ya la tienes",
         TradeError::TooPoor => "Faltan monedas",
     }
 }

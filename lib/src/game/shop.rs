@@ -238,8 +238,8 @@ impl Game {
         } else {
             ToastIcon::Item(row.icon.clone())
         };
-        // What came of it goes up as a toast; a greyed-out row says nothing unless it has
-        // something to say ("Ya la tienes"), and one that only costs too much stays quiet.
+        // What came of it goes up as a toast; a greyed-out row that costs too much stays
+        // quiet unless it carries a note.
         let toast = if row.enabled {
             let result = crate::shop::trade(
                 row,

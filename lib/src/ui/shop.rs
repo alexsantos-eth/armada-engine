@@ -5,7 +5,7 @@
 
 use macroquad::prelude::*;
 
-use super::draw::{draw_icon, draw_label, draw_piece, rgb, text_width};
+use super::draw::{draw_icon, draw_label, draw_piece, fit_size, rgb, text_width};
 use super::frame::ShopFrame;
 use super::skin::ClaySkin;
 use crate::shop::{MarketMark, ShopLayout, ShopRow, Tab, mark_pose, mark_rect};
@@ -90,19 +90,31 @@ fn draw_row(skin: &ClaySkin, row: &ShopRow, rect: Rect, selected: bool) {
         draw_icon(texture, icon_at, 1.0);
     }
     let text_x = icon_at.x + side + 12.0;
-    draw_label(skin, &row.name, (text_x, rect.y + 7.0), 24.0, ink, ink, 0.0);
+    let price = row.coins.to_string();
+    let right = rect.x + rect.w - 16.0;
+    let width = coin_width(skin, &price, COIN_SIDE);
+    // Name and detail share the room between the icon and the price, each on one line.
+    let room = (right - width - 10.0 - text_x).max(40.0);
+    let name_size = fit_size(skin, &row.name, 24.0, room);
+    draw_label(
+        skin,
+        &row.name,
+        (text_x, rect.y + 7.0),
+        name_size,
+        ink,
+        ink,
+        0.0,
+    );
+    let detail_size = fit_size(skin, &row.detail, 17.0, room);
     draw_label(
         skin,
         &row.detail,
         (text_x, rect.y + 33.0),
-        17.0,
+        detail_size,
         umber,
         umber,
         0.0,
     );
-    let price = row.coins.to_string();
-    let right = rect.x + rect.w - 16.0;
-    let width = coin_width(skin, &price, COIN_SIDE);
     let mut top = rect.y + (rect.h - COIN_SIDE) / 2.0;
     if let Some(note) = row.note.filter(|_| !row.enabled) {
         let note_width = text_width(skin, note, 17.0);

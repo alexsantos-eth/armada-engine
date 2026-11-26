@@ -87,7 +87,7 @@ fn buying_a_tool_spends_the_coins_and_gives_the_tool() {
 }
 
 #[test]
-fn a_tool_cannot_be_bought_without_the_coins_twice_or_off_the_shelf() {
+fn a_tool_cannot_be_bought_without_the_coins_or_off_the_shelf_but_can_be_bought_again() {
     let items = items();
     let market = market_of("copper_pickaxe");
     let mut belt = Toolbelt::starting(&items);
@@ -103,9 +103,8 @@ fn a_tool_cannot_be_bought_without_the_coins_twice_or_off_the_shelf() {
     );
     let mut rich = Wallet::with(500);
     buy_tool(&mut belt, &mut rich, &market, &items, "copper_pickaxe").unwrap();
-    assert_eq!(
-        buy_tool(&mut belt, &mut rich, &market, &items, "copper_pickaxe"),
-        Err(TradeError::AlreadyOwned)
-    );
-    assert_eq!(rich.coins(), 400);
+    // A second one is bought too: the belt just counts it.
+    buy_tool(&mut belt, &mut rich, &market, &items, "copper_pickaxe").unwrap();
+    assert_eq!(belt.count("copper_pickaxe"), 2);
+    assert_eq!(rich.coins(), 300);
 }
