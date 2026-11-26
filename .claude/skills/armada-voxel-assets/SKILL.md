@@ -18,7 +18,7 @@ Todas las entidades (naturaleza, piedras rúnicas, casas y edificios) están mig
 artifacts/vox/clay/vox_prefabs.py   las piezas del kit            → artifacts/vox/prefabs/*.vox
 artifacts/vox/clay/vox_models.py    naturaleza armada             → artifacts/vox/models/<nombre>.vox
 artifacts/vox/clay/vox_buildings.py piedras, casas y edificios    → artifacts/vox/models/<nombre>.vox
-artifacts/vox/clay/vox_items.py     items que caen al suelo       → artifacts/vox/models/item_<id>.vox
+artifacts/vox/clay/vox_icons.py     iconos desnudos de ítems y herramientas → artifacts/vox/icons/<id>.png
 artifacts/vox/clay/vox_stairs.py    las cuatro gradas (terreno)   → lib/assets/stairs/block_*.png
 artifacts/vox/clay/vox_render.py    Blender: modelo → sprite PNG  → lib/assets/<dir>/<asset>.png
 artifacts/vox/clay/vox_shadow.py    volúmenes de sombra de los .vox → lib/content/volumes/shadow-volumes.bin
@@ -478,15 +478,15 @@ una pieza, se mueven los dos. Piezas: `torch_cup`, `bowl`, `rod` (se apila cada 
 `candle_tall`, `candle_short` (wax, red), `wax`, `sinter`/`sinter_small`, `hot_pool`,
 `fish_flat`; colores `WAX` `#f3e6c2`, `SINTER` `#d9d0b6`, `HOT_WATER` `#5fb8c8`.
 
-### Los items del suelo (`vox_items.py`)
+### Los iconos de ítems y herramientas (`vox_icons.py`)
 
-Lo que cae al derribar algo (madera, piedra, fibra…) es un **montón suelto**, no una entidad: se
-arma con piezas del kit como cualquier modelo, en un volumen 1x1x1, pero pequeño y bajo (un
-tercio de la casilla), en el centro, sin suelo ni sombra. Uno por item de `items.json`, en el
-color de las astillas de su recolección (el `color` del item); el sprite va a
-`lib/assets/items/<id>.png` y el item lo nombra en `sprite`. El juego lo dibuja flotando sobre
-su propia sombra. `python3 artifacts/vox/clay/vox_items.py --render [item_<id> …]`; tras renderizar, `item_outline.py` le dibuja el **contorno de tinta negra** ondulado (estilo papel de la UI) y hay que regenerar los iconos de UI y el atlas (ver `lib/docs/ASSET-PIPELINE.md`). El cobre usa
-`COPPER` (`#a8532c`, variante `copper` de `ore`).
+Lo que cae al derribar algo son las **piezas voxel** de la entidad marcadas `collect` (ver
+`vox_parts_pack.py`). El icono de un ítem (HUD, tienda) es esa misma pieza, ampliada para llenar la
+casilla; el de una herramienta, su modelo inclinado de `vox_tools.py`.
+`python3 artifacts/vox/clay/vox_icons.py --render [<id> …]` los deja **desnudos** en
+`artifacts/vox/icons/<id>.png` (`FACE` elige otra pieza si la primera de `pieces` no es buena cara).
+El contorno de tinta no se hornea: `lib/scripts/build-ui-icons.py` lo dibuja igual para todos al
+recortar a `web/ui/items/`, y luego `node lib/scripts/export-ui.cjs` (ver `lib/docs/ASSET-PIPELINE.md`).
 
 ## 8. Antes de entregar
 

@@ -6,6 +6,7 @@
   "catalogSize": 3,
   "prices": [
     { "item": "fiber", "coins": 1 },
+    { "item": "leaf", "coins": 1 },
     { "item": "wood", "coins": 2 },
     { "item": "stone", "coins": 2 },
     { "item": "mushroom", "coins": 3 },

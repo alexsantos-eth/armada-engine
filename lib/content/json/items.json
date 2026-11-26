@@ -52,9 +52,18 @@
         "sprout",
         "thistle",
         "thistle_short",
-        "leaf_block",
-        "leaf_tuft",
         "wildflower"
+      ]
+    },
+    {
+      "id": "leaf",
+      "name": "Hojas",
+      "stack": 99,
+      "rarity": "common",
+      "color": "5f9f3a",
+      "pieces": [
+        "leaf_block",
+        "leaf_tuft"
       ]
     },
     {
@@ -167,38 +176,19 @@
   "harvest": [
     {
       "blueprints": [
-        "tree",
-        "tree_2",
-        "tree_3",
         "tree_4",
-        "tree_5",
-        "tree_6",
-        "tree_7",
-        "tree_8",
         "tree_9",
         "tree_10",
-        "tree_11",
-        "tree_12",
-        "tree_13",
         "palm_tall",
         "palm",
         "palm_bent",
-        "tree_14",
         "tree_15",
         "tree_16",
-        "tree_17",
-        "tree_18",
-        "tree_19",
-        "tree_20",
-        "tree_21",
         "tree_22",
         "palm_young",
         "palm_lean",
         "palm_slim",
         "tree_24",
-        "tree_25",
-        "tree_26",
-        "tree_27",
         "palm_fan",
         "palm_sprout",
         "palm_cluster",
@@ -219,6 +209,42 @@
         {
           "item": "wood",
           "amount": 3
+        }
+      ]
+    },
+    {
+      "blueprints": [
+        "tree",
+        "tree_2",
+        "tree_3",
+        "tree_5",
+        "tree_6",
+        "tree_7",
+        "tree_8",
+        "tree_11",
+        "tree_12",
+        "tree_13",
+        "tree_14",
+        "tree_17",
+        "tree_18",
+        "tree_19",
+        "tree_20",
+        "tree_21",
+        "tree_25",
+        "tree_26",
+        "tree_27"
+      ],
+      "tool": "axe",
+      "tier": 1,
+      "ticks": 40,
+      "yields": [
+        {
+          "item": "wood",
+          "amount": 3
+        },
+        {
+          "item": "leaf",
+          "amount": 2
         }
       ]
     },
@@ -356,7 +382,18 @@
     },
     {
       "blueprints": [
-        "bush",
+        "bush"
+      ],
+      "ticks": 15,
+      "yields": [
+        {
+          "item": "leaf",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "blueprints": [
         "dead_bush"
       ],
       "ticks": 15,
