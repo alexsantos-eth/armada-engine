@@ -323,6 +323,13 @@ Si un modelo se sale del volumen de su huella, el script se detiene y dice por c
 
 `python3 artifacts/vox/clay/vox_models.py` escribe todos los modelos; con nombres detrás, solo esos.
 
+**Cómo se arma, en JSON.** Cada modelo escribe también `artifacts/vox/models/<nombre>.parts.json`: las
+piezas del kit de las que se armó (nombre, color, el vóxel donde está plantada y sus cajas), que es lo
+que usa el juego para hacer estallar la entidad en esas piezas al recolectarla. `--parts` escribe solo
+esos JSON, sin tocar los `.vox`. Las entidades con regla de recolección en `items.json` se empaquetan en
+`lib/content/json/entity-parts.json` con `python3 artifacts/vox/clay/vox_parts_pack.py`, y
+`python3 artifacts/vox/clay/vox_debris.py` renderiza con Blender el sprite de cada pieza distinta (`lib/assets/debris/`); luego atlas y recompilar.
+
 ### Armar un edificio (`vox_buildings.py`)
 
 Los edificios, casas y piedras rúnicas viven en `artifacts/vox/clay/vox_buildings.py`, con su
@@ -481,6 +488,7 @@ una pieza, se mueven los dos. Piezas: `torch_cup`, `bowl`, `rod` (se apila cada 
 - [ ] Viste el sprite renderizado y la entidad dentro del juego, y adjuntas las dos imágenes.
 - [ ] Atlas regenerado, juego recompilado y tests en verde.
 - [ ] Entregas el `.vox` del modelo, el sprite y los cambios de `vox_prefabs.py` / `vox_models.py` / `vox_buildings.py`.
+- [ ] Si se recolecta: `vox_models.py --parts` (y `vox_buildings.py --parts`) `vox_parts_pack.py` y `vox_debris.py` al día, atlas regenerado y `entity-parts.json` en el commit.
 
 ## 9. El techo de hierba con adornos
 

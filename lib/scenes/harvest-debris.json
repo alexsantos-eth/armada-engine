@@ -1,0 +1,26 @@
+{
+  "world": "procedural",
+  "window": [1280, 800],
+  "zoom": 2.0,
+  "phase": "day",
+  "centre": [-10, 142],
+  "player": [-10, 142],
+  "edits": [
+    {"surface": {"at": [-9, 142], "material": "grass"}},
+    {"place": {"at": [-9, 142], "blueprint": "tree_2"}}
+  ],
+  "steps": [
+    "settle",
+    {"shot": "debris-0-standing.png"},
+    {"gather": {"frames": 70}},
+    {"shot": "debris-1-blast.png"},
+    {"wait": {"frames": 3}},
+    {"shot": "debris-2-flying.png"},
+    {"wait": {"frames": 4}},
+    {"shot": "debris-3-landing.png"},
+    {"wait": {"frames": 8}},
+    {"shot": "debris-4-landed.png"}
+  ],
+  "out": "shots-harvest-debris",
+  "maxFrames": 1600
+}

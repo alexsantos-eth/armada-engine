@@ -5,17 +5,19 @@
 #   python3 vox_models.py                → ../models/<name>.vox for every model
 #   python3 vox_models.py --render       → …and each one rendered onto its asset with vox_render.py
 #   python3 vox_models.py --render tree_3 bush     only those
+#   python3 vox_models.py --parts        → only the <name>.parts.json files (see write_parts)
 #
 # Rendering needs Blender: the `blender` on the PATH, or the `bpy` pip module in this Python.
 # A model fills the whole volume of its footprint (128 voxels per tile, 85 per block of
 # height), the anchor tile's foot at (0, 0, 0): x runs down-right on screen, y down-left.
 # Positions below are in voxels. Leaf blocks sit on the 28-voxel module.
+import json
 import os
 import shutil
 import subprocess
 import sys
 
-from vox_prefabs import BIRCH, CHAR, DEADWOOD, WOOD, MODULE, box, moved, piece, spun, tile_volume, turned, write
+from vox_prefabs import BIRCH, CHAR, DEADWOOD, WOOD, MODULE, box, moved, parts_of, piece, spun, tile_volume, turned, write
 
 M = MODULE
 RING = [(-1, -1), (0, -1), (1, -1), (-1, 0), (0, 0), (1, 0), (-1, 1), (0, 1)]   # 3x3 without the front cell
@@ -925,10 +927,23 @@ def render(model, sprite):
     print("  rendered", os.path.relpath(sprite))
 
 
+def write_parts(path, name, tiles, asset, boxes):
+    """`<name>.parts.json` beside the model: the pieces the entity is assembled from and where each
+    one stands, which is what lets the game blow the entity apart into those pieces when it is
+    gathered. `asset` is the sprite it is rendered onto, without its extension: the key the
+    game finds it by."""
+    document = dict(model=name, asset=os.path.splitext(asset)[0], tiles=list(tiles),
+                    voxels=dict(per_tile=128, per_block=85), parts=parts_of(boxes))
+    with open(path, "w") as out:
+        json.dump(document, out, separators=(",", ":"))
+        out.write("\n")
+
+
 def run(models, args):
     """Write (and with --render, render) the named models of `models`, or all of them."""
     rendering = "--render" in args
-    names = [a for a in args if a != "--render"] or list(models)
+    parts_only = "--parts" in args          # only the .parts.json files: the .vox files stay as they are
+    names = [a for a in args if not a.startswith("--")] or list(models)
     here = os.path.dirname(os.path.abspath(__file__))
     out = os.path.join(here, "..", "models")
     assets = os.path.join(here, "..", "..", "..", "lib", "assets")
@@ -936,8 +951,11 @@ def run(models, args):
     for name in names:
         build, tiles, asset = models[name]
         path = os.path.join(out, name + ".vox")
-        write(path, build(), bounds=tile_volume(tiles))
-        if rendering:
+        boxes = build()
+        if not parts_only:
+            write(path, boxes, bounds=tile_volume(tiles))
+        write_parts(os.path.join(out, name + ".parts.json"), name, tiles, asset, boxes)
+        if rendering and not parts_only:
             os.makedirs(os.path.dirname(os.path.join(assets, asset)), exist_ok=True)
             render(path, os.path.join(assets, asset))
 

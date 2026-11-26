@@ -681,10 +681,56 @@ def spun(boxes, quarters):
     return boxes
 
 
+_PLACED = {}
+
+
 def piece(name, variant=""):
-    """The boxes of a piece of the kit, in one of its colours."""
+    """The boxes of a piece of the kit, in one of its colours. Each call is one instance, and its
+    boxes carry that instance's number (`part`), so `parts_of` can tell the pieces an entity was
+    assembled from once `moved`, `turned` and `spun` have put them in place."""
     build, variants = PIECES[name]
-    return build(variants[variant])
+    _PLACED[len(_PLACED) + 1] = (name, variant)
+    return [dict(b, part=len(_PLACED)) for b in build(variants[variant])]
+
+
+def _voxels(value):
+    """A length in skill units as voxels, to a tenth."""
+    return round(value / SCALE * 10) / 10
+
+
+def parts_of(boxes):
+    """How an entity is built, from the boxes `piece`, `moved`, `turned` and `spun` put in place:
+    its pieces in assembly order, each with its kit name and colour variant, the voxel where it
+    stands (`at`: the middle of its footprint, on its lowest point) and its boxes around that
+    point (centre `c`, half sizes `h` and corner radius `r`, in voxels, and `color`). Loose boxes the model drew
+    without a piece each stand as a piece named `box`. Lengths are in voxels from the anchor
+    tile's foot, the unit `.vox` files use."""
+    order, loose = [], 0
+    groups = {}
+    for b in boxes:
+        key = b.get("part")
+        if key is None:
+            loose += 1
+            key = -loose
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(b)
+    parts = []
+    for key in order:
+        group = groups[key]
+        lo = [min(b["c"][a] - b["h"][a] for b in group) for a in range(3)]
+        hi = [max(b["c"][a] + b["h"][a] for b in group) for a in range(2)]
+        at = ((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, lo[2])
+        name, variant = _PLACED[key] if key > 0 else ("box", "")
+        parts.append(dict(
+            piece=name, variant=variant, at=[_voxels(v) for v in at],
+            boxes=[dict(c=[_voxels(b["c"][a] - at[a]) for a in range(3)],
+                        h=[_voxels(b["h"][a]) for a in range(3)],
+                        r=_voxels(b["r"]),
+                        color=b["color"].lstrip("#"))
+                   for b in group]))
+    return parts
 
 
 def tile_volume(tiles):

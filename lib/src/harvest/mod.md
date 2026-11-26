@@ -1,12 +1,14 @@
 # Harvest (cliente)
 
-La vista de la recolección: los montones de items en el suelo, lanzados desde lo derribado y flotando sobre su sombra (`drop_view.rs`), la sacudida de lo golpeado y las ráfagas de astillas (`impact.rs`), la barra de slots del inventario (abajo en el centro; con controles táctiles, un icono de mochila arriba), la barra de progreso mientras se trabaja, encima de la entidad que se está cosechando, y la nota de lo ganado (`+3 Madera`) durante `GAIN_NOTE_MS`.
+La vista de la recolección: los montones de items en el suelo, lanzados desde lo derribado y flotando sobre su sombra (`drop_view.rs`), la sacudida de lo golpeado y las ráfagas de astillas (`impact.rs`), las piezas que salen despedidas cuando lo golpeado cae (`debris_view.rs`), la barra de slots del inventario (abajo en el centro; con controles táctiles, un icono de mochila arriba), la barra de progreso mientras se trabaja, encima de la entidad que se está cosechando, y la nota de lo ganado (`+3 Madera`) durante `GAIN_NOTE_MS`.
 
 Las reglas viven en `iso::harvest`, `iso::inventory` e `iso::items`; el paso fijo que las corre es `Game::step_harvest` (`src/game/frame.rs`) y el guardado de lo que lleva el jugador es `save::snapshot_of`. Esta carpeta solo traduce el estado a pantalla. Es entrada de juego, no overlay: se pinta en todas las rutas que juegan el mundo (también `/` y las corridas guionizadas, antes de escribir las capturas) y no en `/maker`. Los textos van sin tildes porque la fuente por defecto de Macroquad no las dibuja.
 
 La hotbar, el globo de aviso, la nota y las ganancias los pinta el HUD de arcilla y cómic ([`ui`](../ui/mod.md), ver [`docs/UI-KIT.md`](../../docs/UI-KIT.md)), igual en nativo y en web: `hud_frame.rs` traduce el estado a lo que ese HUD dibuja, y `draw_hotbar` queda solo para cuando faltan las piezas exportadas (`content/ui/`).
 
 `draw_hotbar` solo pinta con Macroquad y no tiene test: se comprueba con `scenes/pr-harvest.json` (excepción de GPU de `FILE_STRUCTURE.md`); la geometría, las etiquetas y la barra de progreso son puros y se prueban en `hotbar.test.rs`.
+
+**Explosión** (`debris_view.rs`): al caer una entidad, `Game::step_harvest` busca sus piezas por su sprite (`Game::entity_parts`, de `content/json/entity-parts.json`) y llama a `DebrisView::spawn`; `Game::collect_dust` la envejece con el tiempo real del fotograma y encola el sprite de cada pieza (`SpriteDraw::whole` con el alfa de la pose, encogido sobre su pie, ordenado por `scene_key` donde está en ese momento; si el atlas no tiene el sprite, se salta). El movimiento es de `iso::debris`; aquí solo se colocan las piezas (`Blast::placed`, pura y probada en `debris_view.test.rs`) y se dibujan. Hasta `MAX_BLASTS` entidades a la vez. El suelo de las piezas es la base de la entidad: si caen sobre un terreno a otro nivel se ven a la altura de esa base.
 
 ## Catálogo de API pública
 

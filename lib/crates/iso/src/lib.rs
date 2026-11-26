@@ -6,6 +6,7 @@ pub mod ai;
 pub mod assets;
 pub mod biomes;
 pub mod camera;
+pub mod debris;
 pub mod det_math;
 pub mod drops;
 pub mod economy;
