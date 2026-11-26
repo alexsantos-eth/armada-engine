@@ -317,3 +317,16 @@ fn item_ids_lists_every_item_sorted() {
         vec!["copper_ore", "fiber", "stone", "wood"]
     );
 }
+
+#[test]
+fn the_tools_are_listed_and_a_family_starts_with_its_lowest_tier() {
+    let items = parse_items(catalog_json(), &entities()).unwrap();
+    assert_eq!(
+        items.tool_ids(),
+        ["copper_pickaxe", "flint_axe", "stone_pickaxe"]
+    );
+    let first = |kind| items.first_tool(kind).map(|tool| tool.id.as_str());
+    assert_eq!(first(ToolKind::Pickaxe), Some("stone_pickaxe"));
+    assert_eq!(first(ToolKind::Axe), Some("flint_axe"));
+    assert_eq!(first(ToolKind::Net), None);
+}

@@ -19,8 +19,8 @@ pub(crate) struct UiAction {
 /// One tool the player owns, as the mobile inventory lists it.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct UiTool {
-    /// The kit piece that draws it (`tool_axe`…).
-    pub(crate) piece: String,
+    /// Its icon, by tool id (`flint_axe`…).
+    pub(crate) icon: String,
     pub(crate) name: String,
     pub(crate) tier: u8,
     /// How many of it are carried.

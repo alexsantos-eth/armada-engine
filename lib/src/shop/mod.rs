@@ -12,5 +12,5 @@ pub(crate) mod session;
 
 pub(crate) use layout::{Hit, ShopLayout};
 pub(crate) use mark::{MarketMark, mark_pose, mark_rect, mark_side};
-pub(crate) use rows::{RowAction, ShopRow, ShopStock, rows, tool_piece, trade};
+pub(crate) use rows::{RowAction, ShopRow, ShopStock, rows, trade};
 pub(crate) use session::{Shop, ShopEvent, ShopKey, Tab};

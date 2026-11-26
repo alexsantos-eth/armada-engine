@@ -41,6 +41,10 @@ KEYS = [
     (135,  120,   18,   -8,  -5.0,   25,   0.20),
     (145,  122,   10,    2,  -1.0,   15,   0.08),
 ]
+# A pickaxe bites with its point, which leads along the head (+x of the tool): at impact the
+# handle stays more upright than an axe's so the point comes in forward and down, not the head
+# sideways or flat. The tool's angle per column, like KEYS' second value.
+PICK_ANGLES = (80, -20, -65, 25, 55, 70, 95, 110)
 ARM_OUT = 0.22      # how far the right arm stands out from the side (share of its length)
 HAND_SHARE = 0.5    # how far the hand turns from the arm toward the tool
 TILT = 0.4          # the head follows the body's lean this much (it keeps looking at the target)
@@ -67,9 +71,9 @@ def in_plane(deg, side=0.0):
     return unit((math.sin(a), side, math.cos(a)))
 
 
-def tool_dir(index):
-    """Where the tool held in the right hand points in cell `index`, in the figure's frame."""
-    return in_plane(KEYS[index][1])
+def tool_dir(index, tool=""):
+    """Where the tool `tool` held in the right hand points in cell `index`, in the figure's frame."""
+    return in_plane(PICK_ANGLES[index] if "pickaxe" in tool else KEYS[index][1])
 
 
 def hand_dir(index):

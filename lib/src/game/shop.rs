@@ -233,11 +233,7 @@ impl Game {
         let Some(row) = rows.get(index) else {
             return;
         };
-        let icon = if row.is_tool {
-            ToastIcon::Piece(row.icon.clone())
-        } else {
-            ToastIcon::Item(row.icon.clone())
-        };
+        let icon = ToastIcon::Item(row.icon.clone());
         // What came of it goes up as a toast; a greyed-out row that costs too much stays
         // quiet unless it carries a note.
         let toast = if row.enabled {

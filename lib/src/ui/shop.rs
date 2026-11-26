@@ -53,23 +53,6 @@ fn coin_and_text(skin: &ClaySkin, text: &str, (x, top): (f32, f32), side: f32, f
     );
 }
 
-/// A kit piece (a tool's icon) drawn into a square `icon_at`, its padding hanging outside it.
-pub(super) fn draw_piece_icon(skin: &ClaySkin, name: &str, icon_at: Rect, alpha: f32) {
-    if let (Some(texture), Some(meta)) = (skin.pieces.get(name), skin.manifest.pieces.get(name)) {
-        let room = meta.pad / skin.manifest.scale * icon_at.w / 48.0;
-        draw_icon(
-            texture,
-            Rect::new(
-                icon_at.x - room,
-                icon_at.y - room,
-                icon_at.w + 2.0 * room,
-                icon_at.w + 2.0 * room,
-            ),
-            alpha,
-        );
-    }
-}
-
 fn draw_row(skin: &ClaySkin, row: &ShopRow, rect: Rect, selected: bool) {
     let ink = rgb(skin.palette.ink, 1.0);
     let umber = rgb(skin.palette.umber, 1.0);
@@ -84,9 +67,7 @@ fn draw_row(skin: &ClaySkin, row: &ShopRow, rect: Rect, selected: bool) {
     draw_piece(skin, piece, rect, 1.0);
     let side = rect.h - 14.0;
     let icon_at = Rect::new(rect.x + 14.0, rect.y + 7.0, side, side);
-    if row.is_tool {
-        draw_piece_icon(skin, &row.icon, icon_at, 1.0);
-    } else if let Some(texture) = skin.items.get(&row.icon) {
+    if let Some(texture) = skin.items.get(&row.icon) {
         draw_icon(texture, icon_at, 1.0);
     }
     let text_x = icon_at.x + side + 12.0;

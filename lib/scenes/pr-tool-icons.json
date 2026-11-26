@@ -1,0 +1,22 @@
+{
+  "world": "procedural",
+  "window": [1280, 800],
+  "zoom": 2.2,
+  "phase": "day",
+  "centre": [-12, 142],
+  "player": [-12, 142],
+  "edits": [
+    { "surface": { "at": [-9, 142], "material": "grass" } },
+    { "place": { "at": [-9, 142], "blueprint": "tree" } }
+  ],
+  "steps": [
+    "settle",
+    { "gather": { "frames": 21 } },
+    { "shot": "icons-0-action.png" },
+    { "pack": "open" },
+    { "pack": "tools" },
+    { "shot": "icons-1-backpack-tools.png" }
+  ],
+  "out": "shots",
+  "maxFrames": 900
+}

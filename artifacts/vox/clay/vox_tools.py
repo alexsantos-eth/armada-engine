@@ -5,7 +5,7 @@
 #
 # One model per tool, in the TOOL frame the in-hand renderer (../player/player_rig.py) holds it
 # in: the handle runs up the z axis from its butt at z = 0, the head sits on top and its working
-# edge faces +x, y is across the head. The grip is GRIP voxels up the handle (where the fist
+# edge (an axe's blade, a pick's point) faces +x, y is across the head. The grip is GRIP voxels up the handle (where the fist
 # closes). Sizes are in voxels, as in vox_prefabs.py (1 voxel = 4 canvas units; the monkey is 62
 # voxels tall, so a tool is about half of it). Boxes are vox_prefabs.box dicts, so the same list
 # is voxelised here for the kit and drawn as rounded clay by the renderer.
@@ -39,9 +39,8 @@ def ring(radius, z, plane_y=True, n=10, thick=2, color=ROPE):
 
 
 def flint_axe():
-    """flint_axe: a short axe, the handle split at the top and a chipped flint blade lashed in."""
-    return (shaft(30) + [box(3.5, 0, 22, 7, 3, 10, WOOD, 1.2)]
-            + [box(6, 0, 21, 8, 3.5, 12, FLINT, 1.4), box(11.5, 0, 22, 3, 2.5, 10, STEEL, 1.0)]
+    """flint_axe: a short axe, a chipped flint blade lashed to the top of the handle."""
+    return (shaft(30) + [box(6, 0, 21, 8, 3.5, 12, FLINT, 1.4), box(11.5, 0, 22, 3, 2.5, 10, STEEL, 1.0)]
             + lashing(23, 4))
 
 
@@ -53,18 +52,20 @@ def bone_axe():
 
 
 def stone_pickaxe():
-    """stone_pickaxe: a rough grey stone across the top of the shaft, a point at each end."""
-    return (shaft(32) + [box(0, 0, 27, 6, 7, 6, ROCK, 1.6), box(0, -8, 28, 5, 9, 4, ROCK, 1.4),
-                         box(0, 8, 28, 5, 9, 4, ROCK, 1.4), box(0, -13.5, 28.5, 4, 4, 3, FLINT, 1.0),
-                         box(0, 13.5, 28.5, 4, 4, 3, FLINT, 1.0)]
+    """stone_pickaxe: a rough grey stone along the top of the shaft, pointing forward (+x): the
+    point leads the swing and bites, with a blunt back end behind the shaft."""
+    return (shaft(32) + [box(0, 0, 27, 7, 6, 6, ROCK, 1.6), box(9, 0, 28, 10, 5, 4, ROCK, 1.4),
+                         box(-8, 0, 28, 8, 5, 4, ROCK, 1.4), box(16, 0, 28.5, 5, 4, 3, FLINT, 1.0),
+                         box(-13.5, 0, 28.5, 4, 4, 3, FLINT, 1.0)]
             + lashing(24, 4))
 
 
 def copper_pickaxe():
-    """copper_pickaxe: a longer shaft and a forged copper head with a collar, bright at the tips."""
-    return (shaft(36) + [box(0, 0, 30, 6.5, 7, 6, COPPER, 2.0), box(0, -9, 31, 5, 10, 4, COPPER, 1.6),
-                         box(0, 9, 31, 5, 10, 4, COPPER, 1.6), box(0, -15, 31.5, 4, 4, 3, COPPER_BRIGHT, 1.0),
-                         box(0, 15, 31.5, 4, 4, 3, COPPER_BRIGHT, 1.0), box(0, 0, 27, 6, 6, 3, COPPER_BRIGHT, 1.4)]
+    """copper_pickaxe: a longer shaft and a forged copper head with a collar pointing forward (+x),
+    bright at the tips: the point leads the swing."""
+    return (shaft(36) + [box(0, 0, 30, 7, 6.5, 6, COPPER, 2.0), box(10, 0, 31, 12, 5, 4, COPPER, 1.6),
+                         box(-9, 0, 31, 10, 5, 4, COPPER, 1.6), box(18, 0, 31.5, 5, 4, 3, COPPER_BRIGHT, 1.0),
+                         box(-15, 0, 31.5, 4, 4, 3, COPPER_BRIGHT, 1.0), box(0, 0, 27, 6, 6, 3, COPPER_BRIGHT, 1.4)]
             + lashing(22, 4, TIMBER))
 
 
@@ -114,11 +115,68 @@ TOOLS = {name: grown(build) for name, build in {
 }.items()}
 
 
+ICON_TILT = 38     # degrees the icon leans, the top going to -y (up and to the right on screen)
+SEGMENT = 5        # voxels: the length of the cubes a long box is cut into to lean it
+
+
+def leaned(boxes, degrees=ICON_TILT):
+    """The boxes leaned `degrees` about the x axis, the top toward -y. A box stays axis-aligned
+    (the voxels have no other way), so a long one is cut into short cubes along its length and
+    each is carried to where the lean takes it: a staircase the clay render smooths out."""
+    a = math.radians(degrees)
+    c, s = math.cos(a), math.sin(a)
+    out = []
+    for b in boxes:
+        x, y, z = b["c"]
+        hx, hy, hz = b["h"]
+        long = max(hx, hy, hz)
+        cut = SEGMENT * 4 / 2
+        if long <= cut * 1.4:
+            parts = [(x, y, z, (hx, hy, hz))]
+        else:
+            n = round(long / cut)
+            parts = []
+            for i in range(n):
+                k = (i + 0.5) / n * 2 - 1
+                if hz == long:
+                    parts.append((x, y, z + k * hz, (hx, hy, hz / n)))
+                elif hx == long:
+                    parts.append((x + k * hx, y, z, (hx / n, hy, hz)))
+                else:
+                    parts.append((x, y + k * hy, z, (hx, hy / n, hz)))
+        for px, py, pz, h in parts:
+            # Rotate about x (through the butt), then lift so the lowest point rests on the ground.
+            ny, nz = py * c + pz * s, -py * s + pz * c
+            out.append(dict(b, c=(px, -ny, nz), h=h))
+    low = min(b["c"][2] - b["h"][2] for b in out)
+    return [dict(b, c=(b["c"][0], b["c"][1], b["c"][2] - low)) for b in out]
+
+
+def icons():
+    """tool_<id> → (the leaned model of the tool, its tile, the PNG it is drawn onto): one icon
+    per tool, as vox_items.py does for the items (the tool is drawn at the middle of the tile)."""
+    return {"tool_" + name: ((lambda build=build: leaned(build())), (1, 1, 1), "items/%s.png" % name)
+            for name, build in TOOLS.items()}
+
+
 def main(names):
+    """The tools' own models (`tool_<id>.vox`, in the hand's frame) and, with --render, their icons
+    (the leaned models, rendered onto lib/assets/items/<id>.png and inked like the items)."""
+    from vox_models import run
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "models")
     os.makedirs(out, exist_ok=True)
+    rendering = "--render" in names
+    names = [n for n in names if n != "--render"]
     for name in names or TOOLS:
         write(os.path.join(out, "tool_%s.vox" % name), TOOLS[name](), bounds=tile_volume((1, 1, 1)))
+    if rendering:
+        from item_outline import main as outline_main
+        models = icons()
+        wanted = ["tool_" + n for n in names] or list(models)
+        # The icons' .vox are written under their own names so they do not replace the hand models.
+        run({("icon_" + k[len("tool_"):]): v for k, v in models.items() if k in wanted},
+            ["--render"] + ["icon_" + k[len("tool_"):] for k in wanted])
+        outline_main([k[len("tool_"):] for k in wanted])
 
 
 if __name__ == "__main__":

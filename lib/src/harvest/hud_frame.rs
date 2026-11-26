@@ -8,17 +8,27 @@ use iso::harvest::{HarvestStatus, HarvestTarget};
 use iso::inventory::Carried;
 use iso::items::{ItemCatalog, ToolKind};
 
-/// The tool and the verb of holding a blueprint's harvest.
-fn action_of(blueprint: &str, items: &ItemCatalog) -> UiAction {
+/// The tool and the verb of holding a blueprint's harvest. The tool is named by id: the best one
+/// carried of the family the harvest asks for, or the family's simplest one when none is carried
+/// (the button still shows what is needed); `hand` for what is gathered by hand.
+fn action_of(blueprint: &str, carried: &Carried, items: &ItemCatalog) -> UiAction {
     let tool = items.harvest_rule(blueprint).and_then(|rule| rule.tool);
-    let (verb, tool_name) = match tool {
-        Some(ToolKind::Axe) => ("Talar", "axe"),
-        Some(ToolKind::Pickaxe) => ("Picar", "pickaxe"),
-        Some(ToolKind::Net) => ("Atrapar", "net"),
-        None => ("Recoger", "hand"),
+    let verb = match tool {
+        Some(ToolKind::Axe) => "Talar",
+        Some(ToolKind::Pickaxe) => "Picar",
+        Some(ToolKind::Net) => "Atrapar",
+        None => "Recoger",
     };
+    let id = tool
+        .and_then(|kind| {
+            carried
+                .toolbelt
+                .best(kind, items)
+                .or_else(|| items.first_tool(kind))
+        })
+        .map_or("hand", |tool| tool.id.as_str());
     UiAction {
-        tool: tool_name.into(),
+        tool: id.into(),
         verb: verb.into(),
     }
 }
@@ -57,7 +67,7 @@ pub(crate) fn hud_frame(
         HarvestStatus::Ready { target } | HarvestStatus::Approaching { target } => (
             None,
             yield_name(target, items),
-            Some(action_of(&target.blueprint, items)),
+            Some(action_of(&target.blueprint, carried, items)),
         ),
         HarvestStatus::Working {
             target,
@@ -66,7 +76,7 @@ pub(crate) fn hud_frame(
         } => (
             Some((*progress as f32 / (*total).max(1) as f32 * 100.0).round() / 100.0),
             yield_name(target, items),
-            Some(action_of(&target.blueprint, items)),
+            Some(action_of(&target.blueprint, carried, items)),
         ),
         HarvestStatus::Idle | HarvestStatus::Done { .. } | HarvestStatus::Blocked { .. } => {
             (None, None, None)
@@ -99,7 +109,7 @@ pub(crate) fn hud_frame(
             .into_iter()
             .filter_map(|(id, count)| items.tool(id).map(|tool| (tool, count)))
             .map(|(tool, count)| UiTool {
-                piece: crate::shop::tool_piece(tool.kind).to_owned(),
+                icon: tool.id.clone(),
                 name: tool.name.clone(),
                 tier: tool.tier,
                 count,
