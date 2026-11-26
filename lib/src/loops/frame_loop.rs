@@ -113,16 +113,19 @@ pub(crate) async fn run(mut game: Game) {
         let after_collect = get_time();
         draw_sorted(&mut game.atlas, game.material.as_ref(), &mut game.draws);
         game.draw_clouds(frame_ms, &view.projection);
+        // The icon over a market is part of the world: it goes into the scene (before the
+        // depth pass, which switches the camera away) so the presentation pass, and the blur of
+        // an open menu, treat it like everything else.
+        if let Some(skin) = game.clay_skin.as_ref().filter(|_| game.streams) {
+            crate::ui::draw_market_marks(skin, &game.market_marks, game.clay_hud.clock_ms);
+        }
         if let Some(depth) = game.depth_material.as_ref() {
             game.depth_target.begin(depth, &view.depth);
             draw_depth(&mut game.atlas, &game.draws, &view.depth);
             game.depth_target.end();
         }
-        game.menu_blur = crate::rendering::backdrop::fade(
-            game.menu_blur,
-            game.shop.is_some() || game.clay_hud.inventory_open,
-            frame_ms,
-        );
+        game.menu_blur =
+            crate::rendering::backdrop::fade(game.menu_blur, game.menu_open(), frame_ms);
         game.scene_target.present(
             game.grade.as_ref(),
             &grade,
@@ -150,11 +153,13 @@ pub(crate) async fn run(mut game: Game) {
             );
             let gains = crate::harvest::hud_frame::gains(&picked, &game.items, at);
             let layout = crate::ui::HudLayout::new(width, height, frame.slots.len(), frame.touch);
+            let pack =
+                crate::ui::PackLayout::new(width, height, frame.slots.len(), frame.tools.len());
             game.clay_hud.apply(&frame, &gains, (width, height));
             game.clay_hud.advance(frame_ms);
             game.clay_hud.held = frame.action.is_some() && action_pressed(&layout);
             if frame.touch
-                && let Some(sound) = game.clay_hud.update_inventory(&layout, &touches())
+                && let Some(sound) = game.clay_hud.update_inventory(&layout, &pack, &touches())
             {
                 game.audio.play(sound);
             }
@@ -243,7 +248,7 @@ pub(crate) async fn run(mut game: Game) {
             game.maker = Some(session);
         }
 
-        if game.touch.visible() {
+        if game.touch.visible() && !game.menu_open() {
             match game.clay_skin.as_ref() {
                 Some(skin) => crate::ui::draw_clay_stick(
                     skin,

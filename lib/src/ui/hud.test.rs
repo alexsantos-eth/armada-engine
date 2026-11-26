@@ -16,6 +16,7 @@ fn frame() -> UiFrame {
             }),
             None,
         ],
+        tools: Vec::new(),
         progress: None,
         progress_at: None,
         progress_name: None,
@@ -129,6 +130,7 @@ fn the_backpack_toggles_once_per_new_press_and_emits_the_matching_sound() {
     let mut hud = ClayHud::default();
     let mobile = HudLayout::new(800.0, 400.0, 6, true);
     let desktop = HudLayout::new(800.0, 400.0, 6, false);
+    let pack = crate::ui::PackLayout::new(800.0, 400.0, 6, 2);
     let backpack = mobile.backpack.unwrap().center();
     let touch = |id, phase, position| Touch {
         id,
@@ -139,18 +141,23 @@ fn the_backpack_toggles_once_per_new_press_and_emits_the_matching_sound() {
 
     assert!(!hud.inventory_open);
     assert_eq!(
-        hud.update_inventory(&desktop, std::slice::from_ref(&press)),
+        hud.update_inventory(&desktop, &pack, std::slice::from_ref(&press)),
         None
     );
     assert_eq!(
         hud.update_inventory(
             &mobile,
+            &pack,
             &[touch(1, TouchPhase::Started, vec2(200.0, 200.0))]
         ),
         None
     );
     assert_eq!(
-        hud.update_inventory(&mobile, &[press, touch(2, TouchPhase::Started, backpack)]),
+        hud.update_inventory(
+            &mobile,
+            &pack,
+            &[press, touch(2, TouchPhase::Started, backpack)]
+        ),
         Some(SoundEvent::InventoryOpen)
     );
 
@@ -161,16 +168,16 @@ fn the_backpack_toggles_once_per_new_press_and_emits_the_matching_sound() {
         TouchPhase::Cancelled,
     ] {
         assert_eq!(
-            hud.update_inventory(&mobile, &[touch(1, phase, backpack)]),
+            hud.update_inventory(&mobile, &pack, &[touch(1, phase, backpack)]),
             None
         );
         assert!(hud.inventory_open);
     }
-    assert_eq!(hud.update_inventory(&mobile, &[]), None);
+    assert_eq!(hud.update_inventory(&mobile, &pack, &[]), None);
     assert!(hud.inventory_open);
 
     assert_eq!(
-        hud.update_inventory(&mobile, &[touch(3, TouchPhase::Started, backpack)]),
+        hud.update_inventory(&mobile, &pack, &[touch(3, TouchPhase::Started, backpack)]),
         Some(SoundEvent::InventoryClose)
     );
     assert!(!hud.inventory_open);

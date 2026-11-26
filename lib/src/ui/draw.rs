@@ -443,10 +443,14 @@ pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, lay
     if let (Some(share), Some(at)) = (frame.progress, frame.progress_at) {
         draw_progress(skin, share, frame.progress_name.as_deref(), at);
     }
-    // On mobile the inventory stays folded until the backpack icon is tapped;
-    // on desktop it is always visible.
-    let show_slots = !frame.touch || hud.inventory_open;
-    if show_slots {
+    // On mobile the inventory stays folded until the backpack icon is tapped, and then opens as
+    // a panel in the middle of the screen; on desktop the bar is always visible.
+    let pack_open = frame.touch && hud.inventory_open;
+    if pack_open {
+        super::pack_draw::draw_pack(skin, hud, frame, layout, |slots| {
+            draw_slots(skin, hud, frame, slots);
+        });
+    } else if !frame.touch {
         draw_piece(skin, "hotbar", layout.panel, 1.0);
         draw_slots(skin, hud, frame, layout);
     }
@@ -455,7 +459,9 @@ pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, lay
     {
         draw_action(skin, hud, action, frame, rect);
     }
-    draw_backpack(skin, hud, layout);
+    if !pack_open {
+        draw_backpack(skin, hud, layout);
+    }
     draw_bubble(skin, hud, layout);
     draw_flights(skin, hud, layout);
 }

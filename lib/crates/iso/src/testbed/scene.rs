@@ -130,6 +130,20 @@ pub enum SceneTrade {
     Close,
 }
 
+/// What a scripted player does with the mobile inventory panel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ScenePack {
+    /// Opens the panel on the items tab.
+    Open,
+    /// Shows the items tab.
+    Items,
+    /// Shows the tools tab.
+    Tools,
+    /// Closes the panel.
+    Close,
+}
+
 /// Units of an item the scripted player starts out carrying.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -168,6 +182,8 @@ pub enum SceneStep {
     Edit(SceneEdit),
     /// Does something at a merchant's shop; the frame goes on with the next step.
     Trade(SceneTrade),
+    /// Does something with the mobile inventory panel (needs the scene's `touch`).
+    Pack(ScenePack),
     /// Writes the frame as a PNG under the run's output directory.
     Shot(String),
 }
@@ -233,6 +249,10 @@ pub struct Scene {
     /// The coins the player has before the first step.
     #[serde(default)]
     pub wallet: u64,
+    /// Whether the touch controls are on, as on a phone: the inventory is then the backpack
+    /// and its panel.
+    #[serde(default)]
+    pub touch: bool,
     /// What is built before the first step.
     #[serde(default)]
     pub edits: Vec<SceneEdit>,

@@ -352,6 +352,10 @@ impl Game {
         };
         let mut input = input;
         self.update_shop(&mut input);
+        if self.clay_hud.inventory_open {
+            // An open inventory is an overlay: nothing moves or acts under it.
+            input = NormalizedInput::default();
+        }
         self.player.walk = input.walk;
         set_player_run(&mut self.player, input.run);
         if input.jetpack_pressed {

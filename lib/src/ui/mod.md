@@ -71,8 +71,8 @@ Todo es puro y se prueba (`skin`, `slice`, `layout`, `motion`, `hud`) salvo `dra
 ### `hud.rs`
 
 - [`ClayHud`](hud.rs#L53) — El estado de las animaciones, del botón de acción y del inventario táctil.
-- [`ClayHud::update_inventory`](hud.rs#L69) — Alterna el inventario con un toque nuevo sobre la mochila y devuelve el sonido de apertura o cierre.
-  - Firma: `pub(crate) fn update_inventory(&mut self, layout: &HudLayout, touches: &[Touch]) -> Option<SoundEvent>`
+- [`ClayHud::update_inventory`](hud.rs#L69) — Abre el panel con un toque nuevo sobre la mochila; con el panel abierto, una pestaña la muestra y la X o un toque fuera lo cierra. Devuelve el sonido de apertura o cierre.
+  - Firma: `pub(crate) fn update_inventory(&mut self, layout: &HudLayout, pack: &PackLayout, touches: &[Touch]) -> Option<SoundEvent>`
 - [`ClayHud::apply`](hud.rs#L93) — Toma el fotograma y las ganancias: cada ganancia lanza un vuelo al slot donde se depositaron las unidades; una nota nueva de inventario lleno abre el globo de aviso.
   - Firma: `pub(crate) fn apply(&mut self, frame: &UiFrame, gains: &[UiGain], size: (f32, f32)) {`
 - [`ClayHud::advance`](hud.rs#L118) — Envejece todo; un vuelo que aterriza entrega su cuenta y hace rebotar el slot.
@@ -102,6 +102,12 @@ Pinta la tienda con el kit y no tiene test (excepción de GPU de `FILE_STRUCTURE
   - Firma: `pub(crate) fn draw_clay_stick( skin: &ClaySkin, view: &StickView, tool: Option<&str>, clock_ms: f64, ) {`
 - [`draw_clay_hud`](draw.rs#L439) — Pinta la barra de progreso con el material que va a soltar arriba del jugador, el panel y los slots, el botón de acción, el globo de aviso y los números voladores. Dibuja la mochila cerrada o abierta según el estado del inventario táctil. La pieza `progress` es el fondo oscuro de la barra y `progress_fill` se estira dentro de su contorno según el avance.
   - Firma: `pub(crate) fn draw_clay_hud(skin: &ClaySkin, hud: &ClayHud, frame: &UiFrame, layout: &HudLayout) {`
+
+### Inventario móvil
+
+- `pack.rs` — Dónde va el panel de la mochila en un móvil: una caja en el centro de la pantalla, como la del mercado, con dos pestañas («Items» y «Herramientas»), la X para cerrar, y debajo los slots en cuadrícula o las herramientas en filas (`PackLayout::new`, `PackLayout::hit`, `PackTab`, `PackHit`). Puro y probado en `pack.test.rs`.
+- `pack_draw.rs` — `draw_pack` la pinta con las piezas del kit (`hotbar`, `shop_row`, `badge`, los slots de la barra). Con el panel abierto el icono de la mochila se esconde: la X cierra. Tocar una pestaña la muestra; tocar la X o fuera del panel cierra (`ClayHud::update_inventory`).
+- Mientras el panel o la tienda están abiertos el jugador no se mueve ni actúa (`Game::menu_open`) y el mundo se desenfoca detrás; los iconos flotantes de los mercados se dibujan dentro de la escena para que ese blur también los alcance. En escritorio la barra de slots sigue como siempre.
 
 ### Toasts
 

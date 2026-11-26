@@ -51,11 +51,12 @@ Tres decisiones que no son obvias:
 - [`SceneEdit`](scene.rs#L53) — Un cambio al mundo, en los términos de las siete herramientas del editor.
   - Declaración: `pub enum SceneEdit { Raise, Lower, Surface, Tint, Top, Place, Erase }`
 - [`SceneStep`](scene.rs#L144) — Un paso de la corrida.
-  - Declaración: `pub enum SceneStep { Walk, Jump, Jetpack, Gather, Wait, Settle, Teleport, Phase, Edit, Trade, Shot }`
+  - Declaración: `pub enum SceneStep { Walk, Jump, Jetpack, Gather, Wait, Settle, Teleport, Phase, Edit, Trade, Pack, Shot }`
+- [`ScenePack`](scene.rs) — Lo que el jugador hace con el panel de la mochila móvil: `Open`, `Items`, `Tools`, `Close`.
 - [`SceneTrade`](scene.rs#L116) — Lo que el jugador hace en una tienda: `Open`, `Sell`, `Buy`, `Up`, `Down`, `Confirm`, `Close`.
 - [`SceneCarry`](scene.rs#L136) — Unidades de un item con que empieza el jugador.
 - [`Scene`](scene.rs#L208) — Una corrida completa, tal como la describe `scene.json`.
-  - Declaración: `pub struct Scene { world, seed, centre, window, zoom, phase, player, carry, wallet, edits, steps, out, max_frames }` (`carry`: items con que empieza el jugador; `wallet`: sus monedas)
+  - Declaración: `pub struct Scene { world, seed, centre, window, zoom, phase, player, carry, wallet, touch, edits, steps, out, max_frames }` (`carry`: items con que empieza el jugador; `wallet`: sus monedas)
 
 #### Funciones y métodos
 

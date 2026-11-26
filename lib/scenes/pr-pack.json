@@ -1,0 +1,96 @@
+{
+  "world": "procedural",
+  "window": [
+    430,
+    860
+  ],
+  "zoom": 2.2,
+  "phase": "day",
+  "centre": [
+    -12,
+    142
+  ],
+  "player": [
+    -13,
+    142
+  ],
+  "carry": [
+    {
+      "item": "wood",
+      "amount": 14
+    },
+    {
+      "item": "stone",
+      "amount": 6
+    },
+    {
+      "item": "fiber",
+      "amount": 9
+    },
+    {
+      "item": "copper_ore",
+      "amount": 2
+    },
+    {
+      "item": "coconut",
+      "amount": 3
+    }
+  ],
+  "wallet": 60,
+  "edits": [
+    {
+      "surface": {
+        "at": [
+          -13,
+          141
+        ],
+        "material": "grass"
+      }
+    },
+    {
+      "place": {
+        "at": [
+          -13,
+          141
+        ],
+        "blueprint": "market_stall"
+      }
+    }
+  ],
+  "steps": [
+    "settle",
+    {
+      "shot": "pack-0-closed.png"
+    },
+    {
+      "pack": "open"
+    },
+    {
+      "wait": {
+        "frames": 20
+      }
+    },
+    {
+      "shot": "pack-1-items.png"
+    },
+    {
+      "pack": "tools"
+    },
+    {
+      "shot": "pack-2-tools.png"
+    },
+    {
+      "pack": "close"
+    },
+    {
+      "wait": {
+        "frames": 20
+      }
+    },
+    {
+      "shot": "pack-3-closed.png"
+    }
+  ],
+  "touch": true,
+  "out": "shots-pack"
+}
