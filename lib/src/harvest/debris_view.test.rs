@@ -3,6 +3,14 @@
 use super::*;
 use iso::debris::Part;
 
+/// Flat dry ground at level 2.
+fn level(_: i32, _: i32) -> Option<Floor> {
+    Some(Floor {
+        top: 2.0,
+        water: false,
+    })
+}
+
 fn tree() -> EntityParts {
     let part = |piece: &str, at: [f64; 3], sprite: &str| Part {
         piece: piece.into(),
@@ -44,10 +52,10 @@ fn a_blast_starts_as_the_entity_stood() {
 fn the_pieces_move_apart_and_then_fade() {
     let mut view = spawned();
     let before = view.blasts[0].placed();
-    view.advance(200.0);
+    view.advance(200.0, &level);
     let after = view.blasts[0].placed();
     assert_ne!(after[1].at, before[1].at);
-    view.advance(DEBRIS_MS - 300.0);
+    view.advance(DEBRIS_MS - 300.0, &level);
     let last = view.blasts[0].placed();
     assert!(last[0].alpha < 1.0 && last[0].scale < 1.0);
 }
@@ -56,9 +64,9 @@ fn the_pieces_move_apart_and_then_fade() {
 fn a_blast_ends_and_is_forgotten() {
     let mut view = spawned();
     assert_eq!(view.live(), 1);
-    view.advance(DEBRIS_MS - 1.0);
+    view.advance(DEBRIS_MS - 1.0, &level);
     assert_eq!(view.live(), 1);
-    view.advance(2.0);
+    view.advance(2.0, &level);
     assert_eq!(view.live(), 0);
 }
 
@@ -79,7 +87,7 @@ fn only_so_many_entities_come_apart_at_once() {
     }
     assert_eq!(view.live(), MAX_BLASTS);
     // The oldest ones were the ones to go.
-    assert_eq!(view.blasts[0].anchor.x, 3.5);
+    assert_eq!(view.blasts[0].bodies[0].1.at[0], 3.5);
 }
 
 #[test]
@@ -118,9 +126,36 @@ fn the_pieces_that_stay_as_items_are_not_part_of_the_fading_blast() {
     let mut all = DebrisView::default();
     all.spawn(&tree(), WorldCoord { x: 0, y: 0 }, 0, 3, &[]);
     view.spawn(&tree(), WorldCoord { x: 0, y: 0 }, 0, 3, &[0]);
-    assert_eq!(
-        view.blasts[0].fragments.len() + 1,
-        all.blasts[0].fragments.len()
-    );
-    assert!(view.blasts[0].fragments.iter().all(|f| f.part != 0));
+    assert_eq!(view.blasts[0].bodies.len() + 1, all.blasts[0].bodies.len());
+    assert!(view.blasts[0].bodies.iter().all(|(part, _)| *part != 0));
+}
+
+#[test]
+fn the_pieces_fall_to_the_level_below_and_into_the_water() {
+    let mut view = DebrisView::default();
+    // The tree stands on level 2 at x = 4; everything east of it is water at level 0.
+    let shore = |x: i32, _: i32| {
+        Some(if x <= 4 {
+            Floor {
+                top: 2.0,
+                water: false,
+            }
+        } else {
+            Floor {
+                top: 0.0,
+                water: true,
+            }
+        })
+    };
+    view.spawn(&tree(), WorldCoord { x: 4, y: 7 }, 2, 11, &[]);
+    for _ in 0..60 {
+        view.advance(20.0, &shore);
+    }
+    let blast = &view.blasts[0];
+    assert!(blast.bodies.iter().all(|(_, body)| body.resting));
+    for (_, body) in &blast.bodies {
+        let expect = if body.at[0] < 5.0 { 2.0 } else { 0.0 };
+        assert!((body.at[2] - expect).abs() < 1e-9, "{:?}", body.at);
+        assert_eq!(body.afloat, body.at[0] >= 5.0);
+    }
 }

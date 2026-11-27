@@ -2,7 +2,7 @@
 //! landed, picked up by walking over them, kept in their own part of a save.
 
 use super::pieces::PiecePick;
-use crate::debris::{EntityParts, blast, model_to_grid, rest_of};
+use crate::debris::{EntityParts, Floor, blast, model_to_grid, settle};
 use crate::grid::WorldCoord;
 use crate::harvest::Feet;
 use crate::inventory::Inventory;
@@ -36,8 +36,11 @@ pub struct Drop {
     pub amount: u32,
     /// Where it lies, in columns (column centres are integers).
     pub at: GridPoint,
-    /// The block it lies on.
+    /// The block it lies on: the top of the column it came to rest over.
     pub elevation: f64,
+    /// The height it was knocked off at, for the view's toss down from there.
+    #[serde(default)]
+    pub from_elevation: f64,
     /// Where it was knocked off, for the view's toss from there.
     pub from: GridPoint,
     /// Fixed ticks left before it can be picked up.
@@ -96,14 +99,16 @@ impl Drops {
     }
 
     /// Leaves each of `plan`'s picks floating where its piece of `parts` comes to rest when the
-    /// blast of `seed` throws it, carrying its units. Where it lands is clamped to
-    /// [`PIECE_SCATTER`] columns from the anchor, so it is always within reach.
+    /// blast of `seed` throws it over `ground`, carrying its units: it falls down to a lower
+    /// level, floats where there is water and is stopped by a taller column. The throw is
+    /// tempered so that on flat ground it lands within [`PIECE_SCATTER`] columns of the anchor.
     pub fn spawn_pieces(
         &mut self,
         felled: Felled<'_>,
         parts: &EntityParts,
         seed: u64,
         picks: &[PiecePick],
+        ground: &dyn Fn(i32, i32) -> Option<Floor>,
     ) {
         let fragments = blast(parts, seed);
         let from = GridPoint {
@@ -116,21 +121,58 @@ impl Drops {
             else {
                 continue;
             };
-            let [mut across, mut up] = rest_of(fragment);
-            let length = across.hypot(up);
+            let mut fragment = *fragment;
+            // The blast is measured from the middle of the anchor tile.
+            let origin = [
+                f64::from(felled.anchor.x) + 0.5,
+                f64::from(felled.anchor.y) + 0.5,
+            ];
+            let base = f64::from(felled.elevation);
+            // Where it would lie on flat ground: if that is out of reach, throw it less far.
+            let flat = |_: i32, _: i32| {
+                Some(Floor {
+                    top: base,
+                    water: false,
+                })
+            };
+            let level = settle(&fragment, origin, base, &flat);
+            let from_start = [
+                level.at[0] - origin[0] - fragment.start[0],
+                level.at[1] - origin[1] - fragment.start[1],
+            ];
+            let length = (level.at[0] - origin[0]).hypot(level.at[1] - origin[1]);
             if length > PIECE_SCATTER {
-                (across, up) = (across * PIECE_SCATTER / length, up * PIECE_SCATTER / length);
+                // The travel scales with the throw, the place it started from does not: the
+                // share `k` of the travel that keeps it on the edge of the reach.
+                let (sx, sy) = (fragment.start[0], fragment.start[1]);
+                let a = from_start[0].powi(2) + from_start[1].powi(2);
+                let b = sx * from_start[0] + sy * from_start[1];
+                let c = sx * sx + sy * sy - PIECE_SCATTER * PIECE_SCATTER;
+                let temper = if a > 1e-12 {
+                    ((-b + (b * b - a * c).max(0.0).sqrt()) / a).clamp(0.0, 1.0)
+                } else {
+                    1.0
+                };
+                fragment.velocity[0] *= temper;
+                fragment.velocity[1] *= temper;
             }
             let start = fragment.start;
+            // The blast is measured from the middle of the anchor tile.
+            let origin = [
+                f64::from(felled.anchor.x) + 0.5,
+                f64::from(felled.anchor.y) + 0.5,
+            ];
+            let landed = settle(&fragment, origin, f64::from(felled.elevation), ground);
             self.list.push(Drop {
                 id: self.next_id,
                 item: pick.item.clone(),
                 amount: pick.amount,
                 at: GridPoint {
-                    x: from.x + across,
-                    y: from.y + up,
+                    x: landed.at[0] - 0.5,
+                    y: landed.at[1] - 0.5,
                 },
-                elevation: f64::from(felled.elevation),
+                elevation: landed.at[2],
+                from_elevation: f64::from(felled.elevation) + start[2],
                 from: GridPoint {
                     x: from.x + start[0],
                     y: from.y + start[1],

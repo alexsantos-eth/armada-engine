@@ -243,7 +243,11 @@ impl Game {
                 if let Some(parts) = self.entity_parts.of_sprite(taken.texture_source()) {
                     // The pieces that stand for what it gave stay floating as the items.
                     let plan = iso::drops::plan_pieces(parts, yields, &self.items, seed);
-                    self.drops.spawn_pieces(felled_at, parts, seed, &plan.picks);
+                    let manager = &self.manager;
+                    let ground =
+                        |x: i32, y: i32| crate::harvest::debris_view::floor_at(manager, x, y);
+                    self.drops
+                        .spawn_pieces(felled_at, parts, seed, &plan.picks, &ground);
                     self.debris
                         .spawn(parts, target.anchor, target.elevation, seed, &plan.parts());
                 }

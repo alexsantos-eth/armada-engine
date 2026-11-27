@@ -150,12 +150,18 @@ pub fn pose_at(fragment: &Fragment, ms: f64) -> Option<Pose> {
             (rebound * s - 0.5 * DEBRIS_GRAVITY * s * s).max(0.0),
         ]
     };
+    let (scale, alpha) = look_at(ms)?;
+    Some(Pose { at, scale, alpha })
+}
+
+/// The share of its size a piece is drawn at and how opaque it is `ms` after the blast; `None`
+/// once it is gone.
+pub fn look_at(ms: f64) -> Option<(f64, f64)> {
+    if !(0.0..DEBRIS_MS).contains(&ms) {
+        return None;
+    }
     let fade = ((ms - DEBRIS_FADE_AT_MS) / (DEBRIS_MS - DEBRIS_FADE_AT_MS)).clamp(0.0, 1.0);
-    Some(Pose {
-        at,
-        scale: 1.0 - (1.0 - DEBRIS_MIN_SCALE) * fade,
-        alpha: 1.0 - fade,
-    })
+    Some((1.0 - (1.0 - DEBRIS_MIN_SCALE) * fade, 1.0 - fade))
 }
 
 #[cfg(test)]

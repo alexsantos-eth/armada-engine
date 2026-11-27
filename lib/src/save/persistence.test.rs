@@ -75,6 +75,12 @@ fn a_saved_archive_records_what_the_player_carries_and_the_heaps_on_the_ground()
             item: "wood".into(),
             amount: 3,
         }],
+        &|_, _| {
+            Some(iso::debris::Floor {
+                top: 0.0,
+                water: false,
+            })
+        },
     );
     let save = snapshot_of(
         &ChunkArchive::new(),

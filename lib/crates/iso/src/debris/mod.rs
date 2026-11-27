@@ -2,7 +2,9 @@
 //! apart when it is gathered.
 
 pub mod blast;
+pub mod fall;
 pub mod parts;
 
 pub use blast::*;
+pub use fall::*;
 pub use parts::*;

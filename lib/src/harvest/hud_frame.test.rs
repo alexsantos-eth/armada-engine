@@ -212,6 +212,12 @@ fn collecting_more_wood_keeps_a_full_stack_at_its_limit_during_the_flight() {
             item: "wood".into(),
             amount: 3,
         }],
+        &|_, _| {
+            Some(iso::debris::Floor {
+                top: 0.0,
+                water: false,
+            })
+        },
     );
     let picked = drops.collect(
         iso::harvest::Feet {
