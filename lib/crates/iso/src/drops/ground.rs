@@ -53,7 +53,7 @@ pub struct Drop {
 /// What a floating piece looks like.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct DropPiece {
-    /// The piece's sprite, `debris/p_<hash>`.
+    /// The piece's inked sprite, `debris/i_<hash>`.
     pub sprite: String,
     /// Columns along x and y a wide piece's sprite was rendered off its foot (`iso::debris::Part`).
     #[serde(default)]
@@ -179,7 +179,7 @@ impl Drops {
                 },
                 wait: PICKUP_DELAY_TICKS,
                 piece: DropPiece {
-                    sprite: part.sprite.clone(),
+                    sprite: inked_sprite(&part.sprite),
                     shift: model_to_grid_pair(part.shift),
                 },
             });
@@ -239,6 +239,15 @@ impl Drops {
         }
         self.list.retain(|drop| drop.amount > 0);
         collected
+    }
+}
+
+/// The inked twin of a piece's sprite: `debris/p_<hash>` → `debris/i_<hash>`. Only the pieces that
+/// float as drops wear the ink line; the same piece thrown as scrap keeps its bare sprite.
+pub fn inked_sprite(sprite: &str) -> String {
+    match sprite.rsplit_once("/p_") {
+        Some((dir, hash)) => format!("{dir}/i_{hash}"),
+        None => sprite.to_string(),
     }
 }
 

@@ -54,6 +54,14 @@
       "shot": "blast.png"
     },
     {
+      "wait": {
+        "frames": 14
+      }
+    },
+    {
+      "shot": "blast-late.png"
+    },
+    {
       "teleport": [
         -10,
         143

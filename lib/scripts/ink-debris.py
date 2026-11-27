@@ -7,8 +7,8 @@ same ink line the item and tool icons wear (`build-ui-icons.py`: the very `outli
 colour), so what can be taken reads at a glance against the decorative pieces.
 
 The BARE renders of the collectable pieces live in artifacts/vox/debris/<p_hash>.png
-(`vox_debris.py` writes them there); this draws the line and writes lib/assets/debris/<p_hash>.png,
-the sprite the atlas packs. Changing the line never means rendering anything again:
+(`vox_debris.py` writes them there); this draws the line and writes lib/assets/debris/i_<hash>.png,
+the sprite a piece that really floats as a drop is drawn with (the p_ one, bare, is what scrap that fades uses). Changing the line never means rendering anything again:
 
     OUTLINE  the line's width, in pixels of the 1024-wide piece canvas (about 2 screen px at zoom 1)
     WOBBLE   how far it strays from a true offset curve
@@ -60,7 +60,7 @@ def ink(path):
 def main(names):
     paths = [source / f"{n}.png" for n in names] or sorted(source.glob("*.png"))
     for path in paths:
-        ink(path).save(target / path.name, optimize=True)
+        ink(path).save(target / ("i_" + path.name.removeprefix("p_")), optimize=True)
     print(f"{len(paths)} pieces inked")
 
 

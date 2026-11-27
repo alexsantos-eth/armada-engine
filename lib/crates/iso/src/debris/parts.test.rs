@@ -77,6 +77,35 @@ fn every_piece_sprite_is_in_the_atlas_manifest() {
 }
 
 #[test]
+fn every_collectable_piece_has_its_inked_twin_in_the_atlas() {
+    let catalog = parse_parts(include_str!("../../../../content/json/entity-parts.json")).unwrap();
+    let manifest = include_str!("../../../../content/json/assets.manifest.json");
+    for (key, entity) in &catalog.entities {
+        for part in entity.parts.iter().filter(|part| part.collect) {
+            let inked = crate::drops::inked_sprite(&part.sprite);
+            assert_ne!(
+                inked, part.sprite,
+                "{key}: {} has no inked twin",
+                part.sprite
+            );
+            assert!(
+                manifest.contains(&format!("/assets/{inked}.")),
+                "{key}: {inked} is not in the atlas"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_piece_sprite_turns_into_its_inked_twin() {
+    assert_eq!(
+        crate::drops::inked_sprite("debris/p_0123456789"),
+        "debris/i_0123456789"
+    );
+    assert_eq!(crate::drops::inked_sprite("tree/block_2"), "tree/block_2");
+}
+
+#[test]
 fn a_patch_of_mushrooms_only_lets_its_big_toadstools_be_collected() {
     let catalog = parse_parts(include_str!("../../../../content/json/entity-parts.json")).unwrap();
     let patch = catalog
