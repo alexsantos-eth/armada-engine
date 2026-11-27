@@ -39,6 +39,7 @@ fn lay(drops: &mut Drops, gained: &[HarvestYield]) {
                 amount: 1,
                 at: GridPoint { x: 4.0, y: 7.0 },
                 elevation: 2.0,
+                from_elevation: 2.0,
                 from: GridPoint { x: 4.0, y: 7.0 },
                 wait: PICKUP_DELAY_TICKS,
                 piece: DropPiece {
@@ -223,12 +224,57 @@ fn tree_parts() -> EntityParts {
     }
 }
 
+/// Flat ground at level 2, where the felled tree stood.
+fn level_two(_: i32, _: i32) -> Option<Floor> {
+    Some(Floor {
+        top: 2.0,
+        water: false,
+    })
+}
+
+#[test]
+fn a_piece_at_the_shore_falls_to_the_lower_level_and_into_the_water() {
+    let parts = tree_parts();
+    let plan = plan_pieces(&parts, &yields(&[("wood", 2)]), &items(), 11);
+    // The tree's own column and the ones west of it stand at level 2; east of it, level 0 is
+    // dry for one column and then water.
+    let shore = |x: i32, _: i32| {
+        Some(match x {
+            ..=4 => Floor {
+                top: 2.0,
+                water: false,
+            },
+            5 => Floor {
+                top: 0.0,
+                water: false,
+            },
+            _ => Floor {
+                top: -1.0,
+                water: true,
+            },
+        })
+    };
+    for seed in 0..30 {
+        let mut drops = Drops::default();
+        drops.spawn_pieces(felled(), &parts, seed, &plan.picks, &shore);
+        for drop in drops.list() {
+            let column = (drop.at.x + 0.5).floor() as i32;
+            let expect = match column {
+                ..=4 => 2.0,
+                5 => 0.0,
+                _ => -1.0,
+            };
+            assert_eq!(drop.elevation, expect, "seed {seed}: {drop:?}");
+        }
+    }
+}
+
 #[test]
 fn a_piece_drop_floats_where_its_piece_lands_within_reach() {
     let parts = tree_parts();
     let plan = plan_pieces(&parts, &yields(&[("wood", 2)]), &items(), 11);
     let mut drops = Drops::default();
-    drops.spawn_pieces(felled(), &parts, 11, &plan.picks);
+    drops.spawn_pieces(felled(), &parts, 11, &plan.picks, &level_two);
     assert_eq!(drops.list().len(), 2);
     for drop in drops.list() {
         let piece = &drop.piece;
@@ -239,7 +285,7 @@ fn a_piece_drop_floats_where_its_piece_lands_within_reach() {
         assert_eq!(drop.wait, PICKUP_DELAY_TICKS);
     }
     let mut again = Drops::default();
-    again.spawn_pieces(felled(), &parts, 11, &plan.picks);
+    again.spawn_pieces(felled(), &parts, 11, &plan.picks, &level_two);
     assert_eq!(
         again.list(),
         drops.list(),
@@ -252,7 +298,7 @@ fn a_piece_drop_is_saved_and_read_back_and_an_old_heap_still_loads() {
     let parts = tree_parts();
     let plan = plan_pieces(&parts, &yields(&[("wood", 1)]), &items(), 3);
     let mut drops = Drops::default();
-    drops.spawn_pieces(felled(), &parts, 3, &plan.picks);
+    drops.spawn_pieces(felled(), &parts, 3, &plan.picks, &level_two);
     lay(&mut drops, &yields(&[("stone", 1)]));
     let written = with_drops(serde_json::json!({}), &drops);
     assert_eq!(

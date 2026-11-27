@@ -7,9 +7,10 @@
 //! has taken it, and keeps the clocks. The placing is pure and tested in `debris_view.test.rs`;
 //! `DebrisView::collect` only turns it into draws.
 
-use iso::debris::{DEBRIS_MS, EntityParts, Fragment, blast, model_to_grid, pose_at};
+use iso::debris::{Body, DEBRIS_MS, EntityParts, FALL_STEP, Floor, blast, look_at, model_to_grid};
 use iso::grid::WorldCoord;
 use iso::projection::{GridPoint, ProjectionConfig, ScreenPoint, project_block};
+use iso::terrain::TerrainMaterial;
 use macroquad::prelude::Color;
 
 use crate::assets::sprites::{SpriteAtlas, SpriteDraw, scene_key};
@@ -32,16 +33,24 @@ pub(crate) struct Placed {
     pub(crate) alpha: f64,
 }
 
+/// What the piece finds under column `(x, y)`: the top of its terrain, or the water's surface.
+pub(crate) fn floor_at(manager: &iso::world::ChunkManager, x: i32, y: i32) -> Option<Floor> {
+    manager.column_at(x, y).map(|column| Floor {
+        top: f64::from(column.elevation),
+        water: column.surface == TerrainMaterial::Water,
+    })
+}
+
 /// One entity coming apart.
 #[derive(Clone, Debug)]
 struct Blast {
     parts: EntityParts,
-    fragments: Vec<Fragment>,
-    /// The middle of the tile it stood on, in columns, and the block its base was on.
-    anchor: GridPoint,
-    elevation: f64,
+    /// Each piece in flight, by its index in `parts`, falling over the terrain.
+    bodies: Vec<(usize, Body)>,
     /// Real milliseconds since it went.
     ms: f64,
+    /// Milliseconds of the fall that have not been stepped yet.
+    owed: f64,
 }
 
 /// The entities going apart.
@@ -51,25 +60,34 @@ pub(crate) struct DebrisView {
 }
 
 impl Blast {
-    /// Every piece that is still there, put where the blast has taken it.
+    /// Steps every piece's fall to catch up with the clock.
+    fn fall(&mut self, ground: &dyn Fn(i32, i32) -> Option<Floor>) {
+        let step_ms = FALL_STEP * 1000.0;
+        while self.owed >= step_ms {
+            self.owed -= step_ms;
+            for (_, body) in &mut self.bodies {
+                body.step(ground);
+            }
+        }
+    }
+
+    /// Every piece that is still there, put where its fall has taken it.
     fn placed(&self) -> Vec<Placed> {
-        self.fragments
+        let Some((scale, alpha)) = look_at(self.ms) else {
+            return Vec::new();
+        };
+        self.bodies
             .iter()
-            .filter_map(|fragment| {
-                let pose = pose_at(fragment, self.ms)?;
-                let part = &self.parts.parts[fragment.part];
+            .map(|(index, body)| {
+                let part = &self.parts.parts[*index];
                 // A wide piece's sprite was rendered moved off its foot: its foot goes back by that.
                 let moved = model_to_grid(part.shift[0], part.shift[1]);
-                Some(Placed {
+                Placed {
                     sprite: part.sprite.clone(),
-                    at: [
-                        self.anchor.x + pose.at[0] - moved.x,
-                        self.anchor.y + pose.at[1] - moved.y,
-                        self.elevation + pose.at[2],
-                    ],
-                    scale: pose.scale,
-                    alpha: pose.alpha,
-                })
+                    at: [body.at[0] - moved.x, body.at[1] - moved.y, body.at[2]],
+                    scale,
+                    alpha,
+                }
             })
             .collect()
     }
@@ -90,25 +108,32 @@ impl DebrisView {
         if self.blasts.len() >= MAX_BLASTS {
             self.blasts.remove(0);
         }
+        let origin = [f64::from(anchor.x) + 0.5, f64::from(anchor.y) + 0.5];
         self.blasts.push(Blast {
-            fragments: blast(parts, seed)
-                .into_iter()
+            bodies: blast(parts, seed)
+                .iter()
                 .filter(|fragment| !kept.contains(&fragment.part))
+                .map(|fragment| {
+                    (
+                        fragment.part,
+                        Body::thrown(fragment, origin, f64::from(elevation)),
+                    )
+                })
                 .collect(),
             parts: parts.clone(),
-            anchor: GridPoint {
-                x: f64::from(anchor.x) + 0.5,
-                y: f64::from(anchor.y) + 0.5,
-            },
-            elevation: f64::from(elevation),
             ms: 0.0,
+            owed: 0.0,
         });
     }
 
-    /// Ages every blast by `elapsed_ms` of real time and drops the ones that are over.
-    pub(crate) fn advance(&mut self, elapsed_ms: f64) {
+    /// Ages every blast by `elapsed_ms` of real time, lets its pieces fall over `ground` and drops
+    /// the blasts that are over.
+    pub(crate) fn advance(&mut self, elapsed_ms: f64, ground: &dyn Fn(i32, i32) -> Option<Floor>) {
         for blast in &mut self.blasts {
-            blast.ms += elapsed_ms.max(0.0);
+            let elapsed = elapsed_ms.max(0.0);
+            blast.ms += elapsed;
+            blast.owed += elapsed;
+            blast.fall(ground);
         }
         self.blasts.retain(|blast| blast.ms < DEBRIS_MS);
     }

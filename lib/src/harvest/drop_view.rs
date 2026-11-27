@@ -36,7 +36,9 @@ pub(crate) fn toss(age_ms: f64, drop: &Drop) -> DropPose {
                 x: drop.from.x + (drop.at.x - drop.from.x) * t,
                 y: drop.from.y + (drop.at.y - drop.from.y) * t,
             },
-            lift: 4.0 * TOSS_HEIGHT * t * (1.0 - t) + PIECE_HOVER * t,
+            lift: 4.0 * TOSS_HEIGHT * t * (1.0 - t)
+                + (drop.from_elevation - drop.elevation) * (1.0 - t)
+                + PIECE_HOVER * t,
         };
     }
     let phase = (drop.id % 7) as f64 / 7.0;

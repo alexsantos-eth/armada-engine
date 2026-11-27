@@ -1351,7 +1351,10 @@ impl Game {
             );
         }
         self.dust.collect(projection, &mut self.draws);
-        self.debris.advance(frame_ms);
+        let manager = &self.manager;
+        self.debris.advance(frame_ms, &|x, y| {
+            crate::harvest::debris_view::floor_at(manager, x, y)
+        });
         self.debris
             .collect(projection, &self.atlas, &mut self.draws);
     }

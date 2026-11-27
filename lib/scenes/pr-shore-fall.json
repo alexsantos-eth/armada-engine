@@ -1,0 +1,968 @@
+{
+ "world": "procedural",
+ "window": [
+  1280,
+  800
+ ],
+ "zoom": 2.0,
+ "phase": "day",
+ "centre": [
+  -12,
+  142
+ ],
+ "player": [
+  -10,
+  142
+ ],
+ "edits": [
+  {
+   "raise": {
+    "at": [
+     -11,
+     137
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -10,
+     137
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -9,
+     137
+    ],
+    "times": 2
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -6,
+     137
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -5,
+     137
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -4,
+     137
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -3,
+     137
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -2,
+     137
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -1,
+     137
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -11,
+     138
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -10,
+     138
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -9,
+     138
+    ],
+    "times": 2
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -6,
+     138
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -5,
+     138
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -4,
+     138
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -3,
+     138
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -2,
+     138
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -1,
+     138
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -11,
+     139
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -10,
+     139
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -9,
+     139
+    ],
+    "times": 2
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -6,
+     139
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -5,
+     139
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -4,
+     139
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -3,
+     139
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -2,
+     139
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -1,
+     139
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -11,
+     140
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -10,
+     140
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -9,
+     140
+    ],
+    "times": 2
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -6,
+     140
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -5,
+     140
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -4,
+     140
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -3,
+     140
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -2,
+     140
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -1,
+     140
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -11,
+     141
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -10,
+     141
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -9,
+     141
+    ],
+    "times": 2
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -6,
+     141
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -5,
+     141
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -4,
+     141
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -3,
+     141
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -2,
+     141
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -1,
+     141
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -11,
+     142
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -10,
+     142
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -9,
+     142
+    ],
+    "times": 2
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -6,
+     142
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -5,
+     142
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -4,
+     142
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -3,
+     142
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -2,
+     142
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -1,
+     142
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -11,
+     143
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -10,
+     143
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -9,
+     143
+    ],
+    "times": 2
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -6,
+     143
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -5,
+     143
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -4,
+     143
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -3,
+     143
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -2,
+     143
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -1,
+     143
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -11,
+     144
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -10,
+     144
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -9,
+     144
+    ],
+    "times": 2
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -6,
+     144
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -5,
+     144
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -4,
+     144
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -3,
+     144
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -2,
+     144
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -1,
+     144
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -11,
+     145
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -10,
+     145
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -9,
+     145
+    ],
+    "times": 2
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -6,
+     145
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -5,
+     145
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -4,
+     145
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -3,
+     145
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -2,
+     145
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -1,
+     145
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -11,
+     146
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -10,
+     146
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -9,
+     146
+    ],
+    "times": 2
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -6,
+     146
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -5,
+     146
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -4,
+     146
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -3,
+     146
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -2,
+     146
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -1,
+     146
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -11,
+     147
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -10,
+     147
+    ],
+    "times": 2
+   }
+  },
+  {
+   "raise": {
+    "at": [
+     -9,
+     147
+    ],
+    "times": 2
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -6,
+     147
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -5,
+     147
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -4,
+     147
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -3,
+     147
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -2,
+     147
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -1,
+     147
+    ],
+    "material": "water"
+   }
+  },
+  {
+   "surface": {
+    "at": [
+     -9,
+     142
+    ],
+    "material": "grass"
+   }
+  },
+  {
+   "place": {
+    "at": [
+     -9,
+     142
+    ],
+    "blueprint": "tree"
+   }
+  }
+ ],
+ "steps": [
+  "settle",
+  {
+   "shot": "shore-0-standing.png"
+  },
+  {
+   "gather": {
+    "frames": 70
+   }
+  },
+  {
+   "shot": "shore-1-blast.png"
+  },
+  {
+   "wait": {
+    "frames": 4
+   }
+  },
+  {
+   "shot": "shore-2-falling.png"
+  },
+  {
+   "wait": {
+    "frames": 10
+   }
+  },
+  {
+   "shot": "shore-3-landing.png"
+  },
+  {
+   "wait": {
+    "frames": 60
+   }
+  },
+  {
+   "shot": "shore-4-rest.png"
+  }
+ ],
+ "out": "shots-shore-fall",
+ "maxFrames": 1600
+}
