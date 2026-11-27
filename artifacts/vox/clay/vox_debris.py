@@ -17,12 +17,15 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 
 from vox_models import render
-from vox_parts_pack import piece_shift, pieces
+from vox_parts_pack import collected_pieces, piece_shift, pieces
 from vox_prefabs import SCALE, tile_volume, write
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, "..", "..", "..", "lib", "assets", "debris")
 MODELS = os.path.join(HERE, "..", "models", "debris")
+# The pieces the player picks up are rendered bare here; lib/scripts/ink-debris.py draws their ink
+# line and writes the sprite into ASSETS.
+BARE = os.path.join(HERE, "..", "debris")
 
 
 def boxes_of(shape, shift):
@@ -32,13 +35,13 @@ def boxes_of(shape, shift):
                  color="#" + b["color"], zs=0, pocket=None) for b in shape]
 
 
-def build(name, shape, samples):
+def build(name, shape, samples, collect=False):
     stem = name.split("/")[-1]
     shift = piece_shift(shape)
     tiles = (2, 2, 1) if any(shift) else (1, 1, 1)
     model = os.path.join(MODELS, stem + ".vox")
     write(model, boxes_of(shape, shift), bounds=tile_volume(tiles))
-    sprite = os.path.join(ASSETS, stem + ".png")
+    sprite = os.path.join(BARE if collect else ASSETS, stem + ".png")
     command = [sys.executable, os.path.join(HERE, "vox_render.py"), model, sprite, "--samples", str(samples)]
     subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
     with open(os.path.join(ASSETS, stem + ".json"), "w") as sidecar:
@@ -56,14 +59,21 @@ def main():
             del args[at:at + 2]
             jobs, samples = (value, samples) if flag == "--jobs" else (jobs, value)
     os.makedirs(ASSETS, exist_ok=True)
+    os.makedirs(BARE, exist_ok=True)
     os.makedirs(MODELS, exist_ok=True)
     every = pieces()
+    collect = collected_pieces()
+
+    def done(n):
+        stem = n.split("/")[-1]
+        return os.path.exists(os.path.join(BARE if n in collect else ASSETS, stem + ".png"))
+
     # Without names, only the sprites that are not there yet (delete one to render it again).
     chosen = {n: s for n, s in every.items()
-              if (n.split("/")[-1] in args if args else not os.path.exists(os.path.join(ASSETS, n.split("/")[-1] + ".png")))}
+              if (n.split("/")[-1] in args if args else not done(n))}
     with ThreadPoolExecutor(jobs) as pool:
-        list(pool.map(lambda item: build(item[0], item[1], samples), chosen.items()))
-    print(f"{len(chosen)} of {len(every)} pieces")
+        list(pool.map(lambda item: build(item[0], item[1], samples, item[0] in collect), chosen.items()))
+    print(f"{len(chosen)} of {len(every)} pieces" + ("; now run lib/scripts/ink-debris.py for the collectable ones" if collect & set(chosen) else ""))
 
 
 if __name__ == "__main__":

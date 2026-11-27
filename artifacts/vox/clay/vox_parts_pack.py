@@ -94,6 +94,11 @@ def pieces():
     return out
 
 
+def collected_pieces():
+    """The sprites of the pieces some entity leaves floating as an item to pick up."""
+    return {piece_sprite(p) for m in gathered_models().values() for p in m["parts"] if p.get("collect")}
+
+
 def main():
     packed = {key: dict(tiles=model["tiles"], parts=packed_parts(model)) for key, model in gathered_models().items()}
     document = dict(schemaVersion=1, voxelsPerTile=128, voxelsPerBlock=85, entities=packed)
