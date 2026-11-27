@@ -278,7 +278,7 @@ fn a_piece_drop_floats_where_its_piece_lands_within_reach() {
     assert_eq!(drops.list().len(), 2);
     for drop in drops.list() {
         let piece = &drop.piece;
-        assert!(piece.sprite.starts_with("debris/p_"));
+        assert!(piece.sprite.starts_with("debris/i_"));
         assert_eq!((drop.item.as_str(), drop.amount), ("wood", 1));
         let off = (drop.at.x - 4.0).hypot(drop.at.y - 7.0);
         assert!(off <= PIECE_SCATTER + 1e-9, "{off} columns is out of reach");
