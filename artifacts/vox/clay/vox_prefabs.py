@@ -65,8 +65,8 @@ LEAF_DRY, CHAR = "#a39c46", "#4a423c"
 COPPER = "#a8532c"                                             # copper ore: the dropped item
 FLINT, COPPER_BRIGHT = "#59606b", "#df8c50"                    # the tools: a flint head, a copper edge
 HANDLE, NET, BONE_EDGE = "#9a6a3c", "#d9c58a", "#f4ecd2"       # a shaft's wood, the net's cord, a honed bone edge
-# the merchant NPC (artifacts/vox/merchant/merchant.py): a gnome with a pale skin and a ruddy nose, a teal tunic; light enough that the tints the game multiplies them by still read
-NOSE, SKIN, TUNIC, TUNIC_DARK = "#eba58c", "#f6d9b8", "#52a8b8", "#3c8794"
+# the merchant NPC (artifacts/vox/merchant/merchant.py): a tanuki: tawny fur, dark mask and paws, a cream belly and a glazed sake jug; light enough that the tints the game multiplies them by still read
+TANUKI, TANUKI_DARK, CREAM, JUG = "#c49a6c", "#5b4636", "#f7e6c8", "#7ea6b8"
 # New colours go at the end: the indices of the files already written must not move.
 PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK, CUT, MOSS,
            RED, WHITE, YELLOW, PINK, CAP, STEM, DOT, OCHRE, RUST, ROCK, ROCK_DARK,
@@ -81,7 +81,7 @@ PALETTE = [LEAF, LEAF_DARK, LEAF_AUTUMN, ROSETTE, WOOD, BIRCH, BIRCH_MARK, BARK,
            WAX, SINTER, HOT_WATER,
            SOIL_DEEP, SOIL_WET, CRACK, DEADWOOD, FUR,
            LEAF_DRY, CHAR, COPPER, FLINT, COPPER_BRIGHT, HANDLE, NET, BONE_EDGE,
-           NOSE, SKIN, TUNIC, TUNIC_DARK]
+           TANUKI, TANUKI_DARK, CREAM, JUG]
 
 
 def box(x, y, z0, sx, sy, sz, color, r):

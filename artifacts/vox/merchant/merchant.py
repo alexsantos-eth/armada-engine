@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# merchant.py — the market merchant NPC: its voxel model in every pose, and (later) its sheets.
+# merchant.py — the market merchant NPC (a tanuki): its voxel model in every pose, and (later) its sheets.
 #
 #   python3 artifacts/vox/merchant/merchant.py             writes the poses as .vox (artifacts/vox/models/merchant/)
 #   python3 artifacts/vox/merchant/merchant.py --preview   …and renders lib/target/merchant-preview.png:
 #                                                          a turnaround plus every pose, to judge the design
 #
-# A gnome peddler built with the player's chunky proportions: a tall red cap pulled down over
+# A tanuki peddler built with the player's chunky proportions: a little straw hat between round
 # the eyes, a huge ruddy nose and a white moustache, a teal tunic with a belt and a coin purse, and a
 # pack of wares with a rolled blanket. Facing +x, built from rounded boxes in the kit's palette, no slab of
 # its own: it stands on z = 0.
@@ -22,7 +22,8 @@ sys.path.insert(0, CLAY)
 
 import vox_lib  # noqa: E402
 from vox_prefabs import (  # noqa: E402
-    DOOR, NET, NOSE, PALETTE, RED, SCALE, SKIN, TIMBER, TUNIC, TUNIC_DARK, WHITE, WOOD, YELLOW, box,
+    CREAM, JUG, PALETTE, PINK, RED, ROPE, SCALE, SOOT, TANUKI, TANUKI_DARK, THATCH, TIMBER,
+    WHITE, box,
 )
 
 ROOT = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
@@ -39,49 +40,54 @@ SAMPLES = 48
 
 
 def merchant(breathe=0.0, stride=0.0, show=0.0, bob=0.0, tilt=0.0):
-    """The gnome merchant facing +x in one pose, in kit units (a block is 28).
-    breathe: chest swelling; stride: left leg forward and right back (negative for the other
-    way), also swinging the arms; show: the right hand lifted with a coin; bob: the whole body
-    up a little between strides; tilt: the tip of the cap swaying."""
+    """The tanuki merchant facing +x in one pose, in kit units (a block is 28).
+    breathe: belly swelling; stride: left leg forward and right back (negative for the other
+    way), also swinging the free arm; show: the jug lifted in the right hand; bob: the whole body
+    up a little between strides; tilt: the tail swaying."""
     z = bob
     out = []
     # the monkey's proportions: a head over half the height, a short body, stubby limbs
     for s in (-1, 1):
         sw = stride * s
-        out.append(box(sw * 2.4, s * 3.6, z + 2.0, 5.2, 5, 3.8, TUNIC_DARK, 2.0))         # trousers
-        out.append(box(sw * 2.4 + 1.5, s * 3.6, z + 0, 8, 6, 2.6, WOOD, 2.0))              # boots
-    out.append(box(0, 0, z + 4.6, 11 + breathe, 12 + breathe, 7.6, TUNIC, 4))              # the tunic
-    out.append(box(0, 0, z + 8.0, 11.4, 12.6, 1.6, TIMBER, 0.7))                          # the belt
-    out.append(box(5.8, 0, z + 7.8, 1.4, 3, 2.2, YELLOW, 0.6))                            # its buckle
-    out.append(box(2.0, 7.6, z + 4.6, 3.6, 3.4, 4.4, NET, 1.6))                           # the coin purse
-    for s in (-1, 1):
-        if s > 0 and show > 0:
-            out.append(box(1.4, 7.8, z + 8.0 + show * 1.5, 4.6, 4.6, 6, TUNIC, 2.0))       # raised sleeve
-            out.append(box(3.0, 7.8, z + 13.0 + show * 2, 5, 5, 4, SKIN, 2.0))              # hand
-            out.append(box(4.8, 7.8, z + 17.2 + show * 2, 1.2, 3.6, 3.6, YELLOW, 0.6))      # the coin
-        else:
-            sw = -stride * s
-            out.append(box(sw * 2.4, s * 7.8, z + 4.8, 4.6, 4.6, 7, TUNIC, 2.0))
-            out.append(box(sw * 2.4 + 0.8, s * 7.8, z + 3.4, 5, 5, 3.6, SKIN, 2.2))
-    # the head: wide and round with a pale face, a huge ruddy nose and a white moustache; the
-    # cap hides the eyes
+        out.append(box(sw * 2.4, s * 3.6, z + 2.0, 5.2, 5, 3.8, TANUKI_DARK, 2.0))         # legs
+        out.append(box(sw * 2.4 + 1.5, s * 3.6, z + 0, 8, 6, 2.6, TANUKI_DARK, 2.0))       # feet
+    out.append(box(0, 0, z + 4.6, 11 + breathe, 12 + breathe, 7.6, TANUKI, 4))             # the body
+    out.append(box(4.4 + breathe, 0, z + 4.2, 5, 10, 7.6, CREAM, 3.4))                    # the round belly
+    out.append(box(0, 0, z + 7.6, 12, 13.2, 1.4, ROPE, 0.6))                              # the rope belt
+    # the arms: the left hangs and swings, the right holds a sake jug
+    sw = -stride
+    out.append(box(sw * 2.4, -7.8, z + 4.8, 4.6, 4.6, 7, TANUKI, 2.0))
+    out.append(box(sw * 2.4 + 0.8, -7.8, z + 3.4, 5, 5, 3.6, TANUKI_DARK, 2.2))
+    lift = show * 2.5
+    out.append(box(2.4, 7.8, z + 5.0 + lift, 4.6, 4.6, 6.5, TANUKI, 2.0))                  # arm
+    out.append(box(5.2, 9.0, z + 3.2 + lift, 7.4, 7.4, 8, JUG, 3.4))                         # the jug
+    out.append(box(5.2, 9.0, z + 10.8 + lift, 3.6, 3.6, 2.4, JUG, 1.6))                   # its neck
+    out.append(box(5.2, 9.0, z + 12.8 + lift, 4.0, 4.0, 1.6, TIMBER, 0.8))               # its cork
+    out.append(box(9.0, 9.0, z + 5.6 + lift, 1.2, 4.6, 3.6, CREAM, 0.6))                 # its label
+    out.append(box(3.6, 8.6, z + 6.0 + lift, 4.8, 4.8, 4.0, TANUKI_DARK, 2.0))             # the paw round it
+    # the head: wide and round, a cream muzzle, a dark mask round big friendly eyes
     hz = z + 11.4 + breathe * 0.6
-    out.append(box(0.8, 0, hz, 15.4, 17, 13, SKIN, 5.8))
-    out.append(box(10.6, 0, hz + 1.8, 6.4, 6.4, 6.4, NOSE, 3.2))                          # the nose
-    out.append(box(9.4, 0, hz - 0.2, 3.4, 12.4, 2.8, WHITE, 1.3))                         # the moustache
+    out.append(box(0.8, 0, hz, 15.4, 17, 13, TANUKI, 4.4))
+    out.append(box(8.4, 0, hz + 0.2, 3.6, 10, 6.4, CREAM, 2.8))                          # the muzzle
+    out.append(box(10.4, 0, hz + 3.6, 2.2, 3.8, 2.4, SOOT, 1.1))                          # the nose
     for s in (-1, 1):
-        out.append(box(9.0, s * 5.8, hz - 1.6, 3.2, 3.4, 3.4, WHITE, 1.5))                # its drooping ends
-        out.append(box(0.4, s * 9.6, hz + 3.2, 3.4, 3.6, 4.6, SKIN, 1.7))                 # ear
-    # the classic gnome cap: a deep brim down over the eyes, then a tall cone with a bent tip
-    out.append(box(0.8, 0, hz + 5.6, 16.6, 18.2, 5.4, RED, 2.8))
-    out.append(box(0.6, 0, hz + 10.0, 15.8, 17.4, 4.8, RED, 4.4))
-    out.append(box(-0.6, 0, hz + 13.8, 10.8, 12, 4.8, RED, 3.6))
-    out.append(box(-2.6 - tilt * 0.6, 0, hz + 17.4, 5.8, 6.4, 3.6, RED, 2.4))
-    out.append(box(-4.8 - tilt, 0, hz + 20.2, 3.4, 3.8, 3.2, RED, 1.6))
-    # a smaller pack of wares with a rolled blanket
-    out.append(box(-7.4, 0, z + 3.8, 5.4, 10, 6, DOOR, 2.4))
-    out.append(box(-7.6, 0, z + 8.6, 5, 11.4, 2.6, WHITE, 1.2))
-    out.append(box(-8.0, -6.0, z + 4.4, 4.2, 4.0, 4.0, NET, 1.8))
+        out.append(box(7.2, s * 3.9, hz + 5.0, 3.4, 5.6, 6.6, TANUKI_DARK, 2.8))          # the mask
+        out.append(box(8.8, s * 3.9, hz + 5.4, 1.8, 4.2, 5.2, WHITE, 2.1))                # the eye
+        out.append(box(9.6, s * 4.0, hz + 5.4, 1.4, 3.4, 4.2, SOOT, 1.6))                 # its pupil
+        out.append(box(10.4, s * 3.6, hz + 7.0, 0.8, 1.6, 1.8, WHITE, 0.8))               # its glint
+        out.append(box(7.0, s * 6.8, hz + 1.8, 1.4, 2.8, 2.2, PINK, 0.7))                 # blush
+        out.append(box(-0.4, s * 7.6, hz + 11.4, 4.6, 4.6, 4.2, TANUKI, 2.0))             # ear
+        out.append(box(0.2, s * 7.9, hz + 11.6, 2.2, 2.8, 2.6, CREAM, 1.0))               # inside the ear
+    # a little straw hat perched between the ears
+    out.append(box(0.0, 0, hz + 11.9, 14.4, 14, 1.6, THATCH, 0.8))
+    out.append(box(0.0, 0, hz + 13.1, 9.6, 9.4, 2.8, THATCH, 1.6))
+    out.append(box(0.0, 0, hz + 15.4, 5.0, 5.0, 2.2, THATCH, 1.0))
+    out.append(box(0.0, 0, hz + 12.9, 10.2, 10.0, 1.2, RED, 0.6))                         # its band
+    # the fat striped tail, curled up behind
+    out.append(box(-9.2 - tilt * 0.4, 0, z + 3.2, 5.4, 7.4, 6.0, TANUKI, 2.7))
+    out.append(box(-10.2 - tilt * 0.8, 0, z + 8.4, 5.4, 7.0, 4.0, TANUKI_DARK, 2.0))
+    out.append(box(-10.2 - tilt * 1.2, 0, z + 11.8, 5.2, 6.6, 4.0, TANUKI, 2.0))
+    out.append(box(-9.4 - tilt * 1.6, 0, z + 15.0, 4.2, 5.2, 3.0, CREAM, 1.5))
     return out
 
 
