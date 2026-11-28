@@ -5,10 +5,10 @@
 #   python3 artifacts/vox/merchant/merchant.py --preview   …and renders lib/target/merchant-preview.png:
 #                                                          a turnaround plus every pose, to judge the design
 #
-# A tanuki peddler built with the player's chunky proportions: a little straw hat between round
-# the eyes, a huge ruddy nose and a white moustache, a teal tunic with a belt and a coin purse, and a
-# pack of wares with a rolled blanket. Facing +x, built from rounded boxes in the kit's palette, no slab of
-# its own: it stands on z = 0.
+# A friendly tanuki peddler with the player's chunky proportions: a little straw hat between
+# round ears, big eyes in a dark mask, a cream muzzle and belly, a striped tail, and a glazed sake
+# jug in one paw. Facing +x, built from rounded boxes in the kit's palette, no slab of its own: it
+# stands on z = 0.
 #
 #   idle  4 poses   hands on the apron, then one hand lifted showing a coin (the stall pitch)
 #   walk  4 poses   the two strides of a slow, heavy-footed shuffle
