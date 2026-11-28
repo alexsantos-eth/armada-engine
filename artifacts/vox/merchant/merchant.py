@@ -39,7 +39,7 @@ RENDER_PERCENT = 100 if "--preview" in sys.argv else 50
 SAMPLES = 48
 
 
-def merchant(breathe=0.0, stride=0.0, show=0.0, bob=0.0, tilt=0.0):
+def merchant(breathe=0.0, stride=0.0, show=0.0, bob=0.0, tilt=0.0, tpose=False):
     """The tanuki merchant facing +x in one pose, in kit units (a block is 28).
     breathe: belly swelling; stride: left leg forward and right back (negative for the other
     way), also swinging the free arm; show: the jug lifted in the right hand; bob: the whole body
@@ -55,6 +55,10 @@ def merchant(breathe=0.0, stride=0.0, show=0.0, bob=0.0, tilt=0.0):
     out.append(box(4.4 + breathe, 0, z + 4.2, 5, 9, 7.6, CREAM, 3.4))                    # the round belly
     # the arms hang free at the sides and swing with the stride, like the monkey's
     for s in (-1, 1):
+        if tpose:  # arms straight out to the sides, for the image-to-3D reference
+            out.append(box(0, s * 11.2, z + 7.4, 5, 10.4, 4.8, TANUKI, 2.2))
+            out.append(box(0, s * 17.6, z + 7.2, 5.2, 4.2, 5.2, TANUKI_DARK, 2.2))
+            continue
         sw = -stride * s
         out.append(box(sw * 2.4, s * 6.6, z + 4.8, 4.8, 4.8, 7.6, TANUKI, 2.2))
         out.append(box(sw * 2.4 + 0.8, s * 6.6, z + 3.4, 5, 5, 3.6, TANUKI_DARK, 2.2))

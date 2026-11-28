@@ -18,11 +18,11 @@ def srgb(hexcolor):
     return [x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4 for x in c] + [1]
 
 
-def main(out):
+def main(out, yaw_deg=30, pitch_deg=78, tpose=False, scale=215):
     import bpy
     bpy.ops.wm.read_factory_settings(use_empty=True)
     mats = {}
-    for b in m.merchant():
+    for b in m.merchant(tpose=tpose):
         col = b["color"]
         if col not in mats:
             mat = bpy.data.materials.new(col)
@@ -41,9 +41,9 @@ def main(out):
         bev.width = b["r"] * 0.98; bev.segments = 8; bev.limit_method = "NONE"
         bpy.ops.object.shade_smooth()
     # camera: the character faces the viewer's lower left, seen from a little above
-    cam = bpy.data.cameras.new("c"); cam.type = "ORTHO"; cam.ortho_scale = 215
+    cam = bpy.data.cameras.new("c"); cam.type = "ORTHO"; cam.ortho_scale = scale
     co = bpy.data.objects.new("c", cam); bpy.context.scene.collection.objects.link(co)
-    yaw, pitch, dist = math.radians(30), math.radians(78), 900  # in front, a little to the side
+    yaw, pitch, dist = math.radians(yaw_deg), math.radians(pitch_deg), 900  # in front, a little to the side
     target = (0, 0, 76)
     co.location = (target[0] + dist * math.sin(pitch) * math.cos(yaw), target[1] + dist * math.sin(pitch) * math.sin(yaw), target[2] + dist * math.cos(pitch))
     co.rotation_euler = (pitch, 0, yaw + math.pi / 2)
@@ -65,4 +65,6 @@ def main(out):
 
 
 if __name__ == "__main__":
-    main(args[0])
+    tp = "--tpose" in args
+    pos = [a for a in args if not a.startswith("--")]
+    main(pos[0], *( (0, 88, True, 260) if tp else () ))
