@@ -5,9 +5,9 @@
 #   python3 artifacts/vox/merchant/merchant.py --preview   …and renders lib/target/merchant-preview.png:
 #                                                          a turnaround plus every pose, to judge the design
 #
-# A chubby monkey like the player, but standing and dressed for the stall: a wide ochre hat with a
-# red band, a teal tunic under a cream apron, a belt with a coin purse, and a big backpack of wares
-# with a rolled blanket on top. Facing +x, built from rounded boxes in the kit's palette, no slab of
+# A gnome peddler built with the player's chunky proportions: a tall red cap pulled down over
+# the eyes, a huge ruddy nose and a white moustache, a teal tunic with a belt and a coin purse, and a
+# pack of wares with a rolled blanket. Facing +x, built from rounded boxes in the kit's palette, no slab of
 # its own: it stands on z = 0.
 #
 #   idle  4 poses   hands on the apron, then one hand lifted showing a coin (the stall pitch)
@@ -22,8 +22,7 @@ sys.path.insert(0, CLAY)
 
 import vox_lib  # noqa: E402
 from vox_prefabs import (  # noqa: E402
-    BONE_EDGE, DOOR, NET, OCHRE, PALETTE, PLASTER, RED, SCALE, SOOT, TIMBER, WHITE, YELLOW, MONKEY,
-    MONKEY_FACE, TUNIC, TUNIC_DARK, box,
+    DOOR, NET, NOSE, PALETTE, RED, SCALE, SKIN, TIMBER, TUNIC, TUNIC_DARK, WHITE, WOOD, YELLOW, box,
 )
 
 ROOT = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
@@ -39,52 +38,48 @@ RENDER_PERCENT = 100 if "--preview" in sys.argv else 50
 SAMPLES = 48
 
 
-def merchant(breathe=0.0, stride=0.0, show=0.0, bob=0.0):
-    """The merchant facing +x in one pose, in kit units (a block is 28).
-    breathe: chest and apron swelling; stride: the left leg forward and the right back (negative
-    for the other way), also swinging the arms; show: the right hand lifted with a coin;
-    bob: the whole body up a little between strides."""
+def merchant(breathe=0.0, stride=0.0, show=0.0, bob=0.0, tilt=0.0):
+    """The gnome merchant facing +x in one pose, in kit units (a block is 28).
+    breathe: chest swelling; stride: left leg forward and right back (negative for the other
+    way), also swinging the arms; show: the right hand lifted with a coin; bob: the whole body
+    up a little between strides; tilt: the tip of the cap swaying."""
     z = bob
     out = []
     for s in (-1, 1):
         sw = stride * s
-        # legs and feet
-        out.append(box(sw * 2.4, s * 3.4, z + 1.6, 5, 5, 6.5, MONKEY, 2.0))
-        out.append(box(sw * 2.4 + 1.6, s * 3.4, z + 0, 7.5, 5.6, 2.4, MONKEY_FACE, 1.8))
-    out.append(box(0, 0, z + 6.5, 11, 12.5, 4, TUNIC_DARK, 3))                      # the skirt of the tunic
-    out.append(box(0, 0, z + 8.5, 10.5 + breathe, 12 + breathe, 8.5, TUNIC, 4))     # the body
-    out.append(box(4.2 + breathe * 0.6, 0, z + 6.8, 2.6, 8.4, 8.4, PLASTER, 1.2))   # the apron
-    out.append(box(0, 0, z + 11.2, 11, 12.6, 1.6, TIMBER, 0.7))                     # the belt
-    out.append(box(2.2, 7.4, z + 8.4, 3.6, 3.4, 4.4, NET, 1.6))                     # the coin purse
-    # arms: the left hangs and swings, the right swings or lifts a coin
+        out.append(box(sw * 2.4, s * 3.4, z + 1.8, 5, 5, 6, TUNIC_DARK, 2.0))             # trousers
+        out.append(box(sw * 2.4 + 1.4, s * 3.4, z + 0, 7.5, 5.6, 2.8, WOOD, 1.8))          # boots
+    out.append(box(0, 0, z + 7, 10.5 + breathe, 12 + breathe, 9, TUNIC, 4))                # the tunic
+    out.append(box(0, 0, z + 10.6, 11, 12.6, 1.6, TIMBER, 0.7))                           # the belt
+    out.append(box(5.6, 0, z + 10.3, 1.4, 3, 2.2, YELLOW, 0.6))                           # its buckle
+    out.append(box(2.2, 7.4, z + 7.6, 3.6, 3.4, 4.4, NET, 1.6))                           # the coin purse
     for s in (-1, 1):
         if s > 0 and show > 0:
-            out.append(box(1.4, 7.2, z + 11.6 + show * 1.5, 4, 4, 6.5, MONKEY, 1.8))  # raised arm
-            out.append(box(3.2, 7.2, z + 16.6 + show * 2, 4, 4, 4, MONKEY_FACE, 1.8))  # hand
-            out.append(box(4.4, 7.2, z + 20.2 + show * 2, 1.2, 3.6, 3.6, YELLOW, 0.6))  # the coin
+            out.append(box(1.4, 7.4, z + 10.6 + show * 1.5, 4, 4, 6.5, TUNIC, 1.8))       # raised sleeve
+            out.append(box(3.2, 7.4, z + 15.6 + show * 2, 4.4, 4.4, 4, SKIN, 1.8))          # hand
+            out.append(box(4.6, 7.4, z + 19.4 + show * 2, 1.2, 3.6, 3.6, YELLOW, 0.6))      # the coin
         else:
             sw = -stride * s
-            out.append(box(sw * 2.4, s * 7.4, z + 7.2, 4, 4, 8, MONKEY, 1.8))
-            out.append(box(sw * 2.4 + 0.6, s * 7.4, z + 5.8, 4.4, 4.2, 3.2, MONKEY_FACE, 1.8))
-    # the head: round, with a pale face mask, big dark eyes, little ears
-    hz = z + 15.4 + breathe * 0.6
-    out.append(box(0.8, 0, hz, 14, 15, 12, MONKEY, 5.4))
-    out.append(box(6.8, 0, hz + 0.8, 3, 10.6, 8.4, MONKEY_FACE, 2.8))
-    out.append(box(8.4, 0, hz + 1.0, 1.6, 5, 3.4, MONKEY_FACE, 1.4))              # the muzzle
-    out.append(box(9.4, 0, hz + 3.0, 1, 2.2, 1.6, SOOT, 0.5))                     # the nose
+            out.append(box(sw * 2.4, s * 7.4, z + 7.6, 4, 4, 8, TUNIC, 1.8))
+            out.append(box(sw * 2.4 + 0.6, s * 7.4, z + 5.8, 4.4, 4.4, 3.4, SKIN, 1.8))
+    # the head: a round pale face, a huge ruddy nose and a white moustache; the cap hides the eyes
+    hz = z + 15.8 + breathe * 0.6
+    out.append(box(0.8, 0, hz, 14, 15, 12, SKIN, 5.4))
+    out.append(box(10.0, 0, hz + 1.6, 6, 6, 6, NOSE, 3.0))                                # the nose
+    out.append(box(8.8, 0, hz - 0.2, 3.4, 12, 2.8, WHITE, 1.3))                           # the moustache
     for s in (-1, 1):
-        out.append(box(8.2, s * 3.4, hz + 5.2, 2.2, 3.2, 4.4, SOOT, 1.0))           # eye
-        out.append(box(0.4, s * 8.4, hz + 5.0, 3.6, 3.6, 4.6, MONKEY, 1.6))           # ear
-    # the hat: a wide brim, a round crown, a red band
-    out.append(box(-1.6, 0, hz + 10.4, 15, 16, 1.8, OCHRE, 0.9))
-    out.append(box(-1.6, 0, hz + 11.6, 10, 10.6, 4.4, OCHRE, 3.2))
-    out.append(box(-1.6, 0, hz + 11.8, 10.8, 11.4, 1.6, RED, 0.7))
-    # the backpack of wares, a rolled blanket on top and a bundle at the side
-    out.append(box(-7.4, 0, z + 5.4, 6, 11, 10.5, DOOR, 2.4))
-    out.append(box(-7.4, 0, z + 6.0, 6.4, 11.4, 1.4, TIMBER, 0.6))                   # its strap
-    out.append(box(-7.6, 0, z + 16.0, 5.4, 12.6, 3.6, RED, 1.7))                    # the rolled blanket
-    out.append(box(-7.6, 0, z + 17.0, 5.8, 3.0, 2.0, BONE_EDGE, 0.8))               # its tie
-    out.append(box(-8.2, -6.0, z + 6.0, 4.4, 4.0, 5.0, NET, 1.8))                   # a bundle
+        out.append(box(8.4, s * 5.6, hz - 1.6, 3.2, 3.4, 3.4, WHITE, 1.5))                # its drooping ends
+        out.append(box(0.4, s * 8.4, hz + 2.4, 3.2, 3.4, 4.2, SKIN, 1.6))                 # ear
+    # the classic gnome cap: a deep brim down over the eyes, then a tall cone with a bent tip
+    out.append(box(0.8, 0, hz + 5.0, 15.6, 16.6, 5.4, RED, 2.6))
+    out.append(box(0.6, 0, hz + 9.4, 14.8, 15.8, 5.2, RED, 4.2))
+    out.append(box(-0.6, 0, hz + 13.6, 10.4, 11.4, 5, RED, 3.6))
+    out.append(box(-2.6 - tilt * 0.6, 0, hz + 17.6, 5.4, 6, 3.6, RED, 2.4))
+    out.append(box(-4.8 - tilt, 0, hz + 20.4, 3.4, 3.8, 3.2, RED, 1.6))
+    # a smaller pack of wares with a rolled blanket
+    out.append(box(-7.2, 0, z + 4.6, 5.4, 10, 8, DOOR, 2.4))
+    out.append(box(-7.4, 0, z + 11.8, 5, 11.4, 3.4, WHITE, 1.6))
+    out.append(box(-8.0, -6.0, z + 6.0, 4.2, 4.0, 4.6, NET, 1.8))
     return out
 
 
@@ -97,8 +92,7 @@ def idle_poses():
 
 
 def walk_poses():
-    return [merchant(stride=1.0, bob=0.0), merchant(stride=0.0, bob=0.6),
-            merchant(stride=-1.0, bob=0.0), merchant(stride=0.0, bob=0.6)]
+    return [merchant(stride=1.0, tilt=0.8), merchant(bob=0.6), merchant(stride=-1.0, tilt=-0.4), merchant(bob=0.6)]
 
 
 SHEETS = {"idle": idle_poses, "walk": walk_poses}
