@@ -45,41 +45,43 @@ def merchant(breathe=0.0, stride=0.0, show=0.0, bob=0.0, tilt=0.0):
     up a little between strides; tilt: the tip of the cap swaying."""
     z = bob
     out = []
+    # the monkey's proportions: a head over half the height, a short body, stubby limbs
     for s in (-1, 1):
         sw = stride * s
-        out.append(box(sw * 2.4, s * 3.4, z + 1.8, 5, 5, 6, TUNIC_DARK, 2.0))             # trousers
-        out.append(box(sw * 2.4 + 1.4, s * 3.4, z + 0, 7.5, 5.6, 2.8, WOOD, 1.8))          # boots
-    out.append(box(0, 0, z + 7, 10.5 + breathe, 12 + breathe, 9, TUNIC, 4))                # the tunic
-    out.append(box(0, 0, z + 10.6, 11, 12.6, 1.6, TIMBER, 0.7))                           # the belt
-    out.append(box(5.6, 0, z + 10.3, 1.4, 3, 2.2, YELLOW, 0.6))                           # its buckle
-    out.append(box(2.2, 7.4, z + 7.6, 3.6, 3.4, 4.4, NET, 1.6))                           # the coin purse
+        out.append(box(sw * 2.4, s * 3.6, z + 2.0, 5.2, 5, 3.8, TUNIC_DARK, 2.0))         # trousers
+        out.append(box(sw * 2.4 + 1.5, s * 3.6, z + 0, 8, 6, 2.6, WOOD, 2.0))              # boots
+    out.append(box(0, 0, z + 4.6, 11 + breathe, 12 + breathe, 7.6, TUNIC, 4))              # the tunic
+    out.append(box(0, 0, z + 8.0, 11.4, 12.6, 1.6, TIMBER, 0.7))                          # the belt
+    out.append(box(5.8, 0, z + 7.8, 1.4, 3, 2.2, YELLOW, 0.6))                            # its buckle
+    out.append(box(2.0, 7.6, z + 4.6, 3.6, 3.4, 4.4, NET, 1.6))                           # the coin purse
     for s in (-1, 1):
         if s > 0 and show > 0:
-            out.append(box(1.4, 7.4, z + 10.6 + show * 1.5, 4, 4, 6.5, TUNIC, 1.8))       # raised sleeve
-            out.append(box(3.2, 7.4, z + 15.6 + show * 2, 4.4, 4.4, 4, SKIN, 1.8))          # hand
-            out.append(box(4.6, 7.4, z + 19.4 + show * 2, 1.2, 3.6, 3.6, YELLOW, 0.6))      # the coin
+            out.append(box(1.4, 7.8, z + 8.0 + show * 1.5, 4.6, 4.6, 6, TUNIC, 2.0))       # raised sleeve
+            out.append(box(3.0, 7.8, z + 13.0 + show * 2, 5, 5, 4, SKIN, 2.0))              # hand
+            out.append(box(4.8, 7.8, z + 17.2 + show * 2, 1.2, 3.6, 3.6, YELLOW, 0.6))      # the coin
         else:
             sw = -stride * s
-            out.append(box(sw * 2.4, s * 7.4, z + 7.6, 4, 4, 8, TUNIC, 1.8))
-            out.append(box(sw * 2.4 + 0.6, s * 7.4, z + 5.8, 4.4, 4.4, 3.4, SKIN, 1.8))
-    # the head: a round pale face, a huge ruddy nose and a white moustache; the cap hides the eyes
-    hz = z + 15.8 + breathe * 0.6
-    out.append(box(0.8, 0, hz, 14, 15, 12, SKIN, 5.4))
-    out.append(box(10.0, 0, hz + 1.6, 6, 6, 6, NOSE, 3.0))                                # the nose
-    out.append(box(8.8, 0, hz - 0.2, 3.4, 12, 2.8, WHITE, 1.3))                           # the moustache
+            out.append(box(sw * 2.4, s * 7.8, z + 4.8, 4.6, 4.6, 7, TUNIC, 2.0))
+            out.append(box(sw * 2.4 + 0.8, s * 7.8, z + 3.4, 5, 5, 3.6, SKIN, 2.2))
+    # the head: wide and round with a pale face, a huge ruddy nose and a white moustache; the
+    # cap hides the eyes
+    hz = z + 11.4 + breathe * 0.6
+    out.append(box(0.8, 0, hz, 15.4, 17, 13, SKIN, 5.8))
+    out.append(box(10.6, 0, hz + 1.8, 6.4, 6.4, 6.4, NOSE, 3.2))                          # the nose
+    out.append(box(9.4, 0, hz - 0.2, 3.4, 12.4, 2.8, WHITE, 1.3))                         # the moustache
     for s in (-1, 1):
-        out.append(box(8.4, s * 5.6, hz - 1.6, 3.2, 3.4, 3.4, WHITE, 1.5))                # its drooping ends
-        out.append(box(0.4, s * 8.4, hz + 2.4, 3.2, 3.4, 4.2, SKIN, 1.6))                 # ear
+        out.append(box(9.0, s * 5.8, hz - 1.6, 3.2, 3.4, 3.4, WHITE, 1.5))                # its drooping ends
+        out.append(box(0.4, s * 9.6, hz + 3.2, 3.4, 3.6, 4.6, SKIN, 1.7))                 # ear
     # the classic gnome cap: a deep brim down over the eyes, then a tall cone with a bent tip
-    out.append(box(0.8, 0, hz + 5.0, 15.6, 16.6, 5.4, RED, 2.6))
-    out.append(box(0.6, 0, hz + 9.4, 14.8, 15.8, 5.2, RED, 4.2))
-    out.append(box(-0.6, 0, hz + 13.6, 10.4, 11.4, 5, RED, 3.6))
-    out.append(box(-2.6 - tilt * 0.6, 0, hz + 17.6, 5.4, 6, 3.6, RED, 2.4))
-    out.append(box(-4.8 - tilt, 0, hz + 20.4, 3.4, 3.8, 3.2, RED, 1.6))
+    out.append(box(0.8, 0, hz + 5.6, 16.6, 18.2, 5.4, RED, 2.8))
+    out.append(box(0.6, 0, hz + 10.0, 15.8, 17.4, 4.8, RED, 4.4))
+    out.append(box(-0.6, 0, hz + 13.8, 10.8, 12, 4.8, RED, 3.6))
+    out.append(box(-2.6 - tilt * 0.6, 0, hz + 17.4, 5.8, 6.4, 3.6, RED, 2.4))
+    out.append(box(-4.8 - tilt, 0, hz + 20.2, 3.4, 3.8, 3.2, RED, 1.6))
     # a smaller pack of wares with a rolled blanket
-    out.append(box(-7.2, 0, z + 4.6, 5.4, 10, 8, DOOR, 2.4))
-    out.append(box(-7.4, 0, z + 11.8, 5, 11.4, 3.4, WHITE, 1.6))
-    out.append(box(-8.0, -6.0, z + 6.0, 4.2, 4.0, 4.6, NET, 1.8))
+    out.append(box(-7.4, 0, z + 3.8, 5.4, 10, 6, DOOR, 2.4))
+    out.append(box(-7.6, 0, z + 8.6, 5, 11.4, 2.6, WHITE, 1.2))
+    out.append(box(-8.0, -6.0, z + 4.4, 4.2, 4.0, 4.0, NET, 1.8))
     return out
 
 
