@@ -51,13 +51,13 @@ def merchant(breathe=0.0, stride=0.0, show=0.0, bob=0.0, tilt=0.0):
         sw = stride * s
         out.append(box(sw * 2.4, s * 3.6, z + 2.0, 5.2, 5, 3.8, TANUKI_DARK, 2.0))         # legs
         out.append(box(sw * 2.4 + 1.5, s * 3.6, z + 0, 8, 6, 2.6, TANUKI_DARK, 2.0))       # feet
-    out.append(box(0, 0, z + 4.6, 11 + breathe, 12 + breathe, 7.6, TANUKI, 4))             # the body
-    out.append(box(4.4 + breathe, 0, z + 4.2, 5, 10, 7.6, CREAM, 3.4))                    # the round belly
+    out.append(box(0, 0, z + 4.6, 11 + breathe, 13 + breathe, 7.8, TANUKI, 3))             # the body
+    out.append(box(4.4 + breathe, 0, z + 4.2, 5, 9, 7.6, CREAM, 3.4))                    # the round belly
     # the arms hang free at the sides and swing with the stride, like the monkey's
     for s in (-1, 1):
         sw = -stride * s
-        out.append(box(sw * 2.4, s * 7.8, z + 4.8, 4.6, 4.6, 7, TANUKI, 2.0))
-        out.append(box(sw * 2.4 + 0.8, s * 7.8, z + 3.4, 5, 5, 3.6, TANUKI_DARK, 2.2))
+        out.append(box(sw * 2.4, s * 6.6, z + 4.8, 4.8, 4.8, 7.6, TANUKI, 2.2))
+        out.append(box(sw * 2.4 + 0.8, s * 6.6, z + 3.4, 5, 5, 3.6, TANUKI_DARK, 2.2))
     # the head: wide and round, a cream muzzle, a dark mask round big friendly eyes
     hz = z + 11.4 + breathe * 0.6
     out.append(box(0.8, 0, hz, 15.4, 17, 13, TANUKI, 4.4))
