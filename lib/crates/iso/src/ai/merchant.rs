@@ -27,8 +27,8 @@ pub const BODY_SIDE: f64 = 0.4;
 pub const BODY_HEIGHT: f64 = 0.85;
 /// His coat as rendered: every merchant looks the same.
 pub const TINTS: [u32; 1] = [0xff_ff_ff];
-/// He is drawn at his sheet's size.
-pub const SCALE_RANGE: (f64, f64) = (1.0, 1.0);
+/// Drawn a little over his sheet's size so his body stands as tall as the player's (drawn at 0.75).
+pub const SCALE_RANGE: (f64, f64) = (1.13, 1.13);
 /// Set on a merchant's id.
 pub const ID_BIT: u64 = 1 << 61;
 /// Stalls this close (Chebyshev distance between their anchors, in columns) to one that already
