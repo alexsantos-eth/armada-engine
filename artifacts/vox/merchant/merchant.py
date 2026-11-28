@@ -6,8 +6,8 @@
 #                                                          a turnaround plus every pose, to judge the design
 #
 # A friendly tanuki peddler with the player's chunky proportions: a little straw hat between
-# round ears, big eyes in a dark mask, a cream muzzle and belly, a striped tail, and a glazed sake
-# jug in one paw. Facing +x, built from rounded boxes in the kit's palette, no slab of its own: it
+# round ears, big eyes in a dark mask, a cream muzzle and belly, a striped tail and free-hanging
+# arms. Facing +x, built from rounded boxes in the kit's palette, no slab of its own: it
 # stands on z = 0.
 #
 #   idle  4 poses   hands on the apron, then one hand lifted showing a coin (the stall pitch)
@@ -22,7 +22,7 @@ sys.path.insert(0, CLAY)
 
 import vox_lib  # noqa: E402
 from vox_prefabs import (  # noqa: E402
-    CREAM, JUG, PALETTE, PINK, RED, ROPE, SCALE, SOOT, TANUKI, TANUKI_DARK, THATCH, TIMBER,
+    CREAM, PALETTE, RED, SCALE, SOOT, TANUKI, TANUKI_DARK, THATCH, TIMBER,
     WHITE, box,
 )
 
@@ -53,18 +53,11 @@ def merchant(breathe=0.0, stride=0.0, show=0.0, bob=0.0, tilt=0.0):
         out.append(box(sw * 2.4 + 1.5, s * 3.6, z + 0, 8, 6, 2.6, TANUKI_DARK, 2.0))       # feet
     out.append(box(0, 0, z + 4.6, 11 + breathe, 12 + breathe, 7.6, TANUKI, 4))             # the body
     out.append(box(4.4 + breathe, 0, z + 4.2, 5, 10, 7.6, CREAM, 3.4))                    # the round belly
-    out.append(box(0, 0, z + 7.6, 12, 13.2, 1.4, ROPE, 0.6))                              # the rope belt
-    # the arms: the left hangs and swings, the right holds a sake jug
-    sw = -stride
-    out.append(box(sw * 2.4, -7.8, z + 4.8, 4.6, 4.6, 7, TANUKI, 2.0))
-    out.append(box(sw * 2.4 + 0.8, -7.8, z + 3.4, 5, 5, 3.6, TANUKI_DARK, 2.2))
-    lift = show * 2.5
-    out.append(box(2.4, 7.8, z + 5.0 + lift, 4.6, 4.6, 6.5, TANUKI, 2.0))                  # arm
-    out.append(box(5.2, 9.0, z + 3.2 + lift, 7.4, 7.4, 8, JUG, 3.4))                         # the jug
-    out.append(box(5.2, 9.0, z + 10.8 + lift, 3.6, 3.6, 2.4, JUG, 1.6))                   # its neck
-    out.append(box(5.2, 9.0, z + 12.8 + lift, 4.0, 4.0, 1.6, TIMBER, 0.8))               # its cork
-    out.append(box(9.0, 9.0, z + 5.6 + lift, 1.2, 4.6, 3.6, CREAM, 0.6))                 # its label
-    out.append(box(3.6, 8.6, z + 6.0 + lift, 4.8, 4.8, 4.0, TANUKI_DARK, 2.0))             # the paw round it
+    # the arms hang free at the sides and swing with the stride, like the monkey's
+    for s in (-1, 1):
+        sw = -stride * s
+        out.append(box(sw * 2.4, s * 7.8, z + 4.8, 4.6, 4.6, 7, TANUKI, 2.0))
+        out.append(box(sw * 2.4 + 0.8, s * 7.8, z + 3.4, 5, 5, 3.6, TANUKI_DARK, 2.2))
     # the head: wide and round, a cream muzzle, a dark mask round big friendly eyes
     hz = z + 11.4 + breathe * 0.6
     out.append(box(0.8, 0, hz, 15.4, 17, 13, TANUKI, 4.4))
@@ -75,7 +68,6 @@ def merchant(breathe=0.0, stride=0.0, show=0.0, bob=0.0, tilt=0.0):
         out.append(box(8.8, s * 3.9, hz + 5.4, 1.8, 4.2, 5.2, WHITE, 2.1))                # the eye
         out.append(box(9.6, s * 4.0, hz + 5.4, 1.4, 3.4, 4.2, SOOT, 1.6))                 # its pupil
         out.append(box(10.4, s * 3.6, hz + 7.0, 0.8, 1.6, 1.8, WHITE, 0.8))               # its glint
-        out.append(box(7.0, s * 6.8, hz + 1.8, 1.4, 2.8, 2.2, PINK, 0.7))                 # blush
         out.append(box(-0.4, s * 7.6, hz + 11.4, 4.6, 4.6, 4.2, TANUKI, 2.0))             # ear
         out.append(box(0.2, s * 7.9, hz + 11.6, 2.2, 2.8, 2.6, CREAM, 1.0))               # inside the ear
     # a little straw hat perched between the ears
