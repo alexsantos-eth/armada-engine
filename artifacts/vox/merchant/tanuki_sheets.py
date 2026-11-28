@@ -44,6 +44,7 @@ ARM_LEN = 0.56                       # the arm is shortened to this share of its
 SIDE_X = 0.19                        # beyond this |x| (between legs and head) the mesh is an arm
 HEAD_Z = 0.288                       # the head starts here
 ARM_TOP = 0.40                       # the arms (in the T) end below this
+STUB_Y = 0.12                        # behind this (low down, between the legs) is Hunyuan's nub
 LEG_Z = 0.15                         # the legs and feet end here
 HANG = math.radians(82)              # how far the arms are turned down from the T
 
@@ -81,6 +82,8 @@ def build(path, debug=False):
     def region(face):
         x, y, z = face.calc_center_median()
         if z < LEG_Z:
+            if y > STUB_Y:                 # Hunyuan's little dark nub at the back: dropped
+                return None
             return "legR" if x > 0 else "legL"
         if abs(x) > SIDE_X and z < ARM_TOP:
             return "armR" if x > 0 else "armL"
@@ -91,7 +94,9 @@ def build(path, debug=False):
     bm.faces.ensure_lookup_table()
     names = {}
     for f in bm.faces:
-        names.setdefault(region(f), []).append(f.index)
+        r = region(f)
+        if r:
+            names.setdefault(r, []).append(f.index)
     bm.free()
 
     parts = {}
@@ -115,6 +120,7 @@ def build(path, debug=False):
             bpy.data.objects.remove(parts.pop(name), do_unlink=True)
     for s, side in ((1, "R"), (-1, "L")):
         parts["arm" + side] = clean_arm(s, fur, paw)
+    parts["pelvis"] = pelvis(parts["torso"])
     return parts
 
 
@@ -140,6 +146,32 @@ def limb_colours(body):
     bm.free()
     mean = lambda c: tuple(sum(p[i] for p in c) / len(c) for i in range(3))
     return srgb_to_linear((0xc2, 0x96, 0x68)), srgb_to_linear((0x5b, 0x46, 0x36))   # tawny sleeves, dark paws like the feet
+
+
+def pelvis(torso):
+    """A dark rounded plate closing the open bottom of the cut torso, so the swinging legs never
+    show its inside."""
+    import bpy
+
+    vs = [v.co for v in torso.data.vertices]
+    lo = [min(v[a] for v in vs) for a in range(3)]
+    hi = [max(v[a] for v in vs) for a in range(3)]
+    bpy.ops.mesh.primitive_cube_add(size=1, location=((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, lo[2] + 0.03))
+    o = bpy.context.object
+    o.scale = ((hi[0] - lo[0]) * 0.97, (hi[1] - lo[1]) * 0.97, 0.12)
+    bpy.ops.object.transform_apply(scale=True)
+    bev = o.modifiers.new("b", "BEVEL")
+    bev.width, bev.segments, bev.limit_method = 0.05, 5, "NONE"
+    bpy.ops.object.modifier_apply(modifier="b")
+    bpy.ops.object.shade_smooth()
+    m = bpy.data.materials.new("pelvis")
+    m.use_nodes = True
+    shader = m.node_tree.nodes["Principled BSDF"]
+    shader.inputs["Base Color"].default_value = (*srgb_to_linear((0x7a, 0x5c, 0x42)), 1)
+    shader.inputs["Roughness"].default_value = 0.7
+    o.data.materials.append(m)
+    o.name = "pelvis"
+    return o
 
 
 def srgb_to_linear(rgb):
@@ -224,14 +256,14 @@ def rig(parts):
         joints["hip" + side] = h
         leg.parent = h
         leg.location = -hp
-    for name in ("torso", "head"):
+    for name in ("torso", "head", "pelvis"):
         parts[name].parent = root
     return joints, holder
 
 
 def pose(joints, holder, p):
     """One pose: arms and legs swing about x (forward is −y), the body lifts and breathes."""
-    swing = math.radians(26) * p["swing"]
+    swing = math.radians(15) * p["swing"]
     sway = math.radians(6) * p["sway"]
     for s, side in ((1, "R"), (-1, "L")):
         joints["shoulder" + side].rotation_euler = (swing * -s + sway, 0, 0)
