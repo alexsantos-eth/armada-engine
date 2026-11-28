@@ -155,8 +155,22 @@ impl Game {
             .collect();
         let ground = ChunkGround { manager };
         let seed = self.world_seed;
+        let economy = &self.economy;
         self.npcs.sync(&live, |chunk| {
-            iso::npc::spawn_npcs(seed, chunk, &ground, manager.catalog())
+            let mut born = iso::npc::spawn_npcs(seed, chunk, &ground, manager.catalog());
+            // The merchants are born beside the stalls the chunk carries.
+            let stalls: Vec<&iso::entities::Entity> = manager
+                .entities_chunk(chunk)
+                .unwrap_or_default()
+                .iter()
+                .filter(|entity| economy.is_merchant(entity.type_()))
+                .collect();
+            born.extend(iso::npc::spawn_merchants(
+                &ground,
+                manager.catalog(),
+                &stalls,
+            ));
+            born
         });
         let player = iso::player::physics::get_player_column(GridPoint {
             x: self.player.x,

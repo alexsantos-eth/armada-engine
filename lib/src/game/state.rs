@@ -506,6 +506,7 @@ impl Game {
         let npc_sheets = NpcSheets {
             crab: npc_sheets(&atlas, crate::game::config::CRAB_ART),
             rabbit: npc_sheets(&atlas, crate::game::config::RABBIT_ART),
+            merchant: npc_sheets(&atlas, crate::game::config::MERCHANT_ART),
         };
         if sheets.walk_poses.is_none() {
             eprintln!("warning: the atlas has no player sheets; the still figure will be drawn");
@@ -616,6 +617,7 @@ mod tests;
 pub(crate) struct NpcSheets {
     pub(crate) crab: crate::player::player_view::PlayerSheets,
     pub(crate) rabbit: crate::player::player_view::PlayerSheets,
+    pub(crate) merchant: crate::player::player_view::PlayerSheets,
 }
 
 impl NpcSheets {
@@ -624,6 +626,7 @@ impl NpcSheets {
         match kind {
             iso::npc::NpcKind::Crab => self.crab,
             iso::npc::NpcKind::Rabbit => self.rabbit,
+            iso::npc::NpcKind::Merchant => self.merchant,
         }
     }
 }

@@ -104,6 +104,7 @@ pub fn footfall_of(kind: NpcKind) -> SoundEvent {
     match kind {
         NpcKind::Rabbit => SoundEvent::RabbitHop,
         NpcKind::Crab => SoundEvent::CrabStep,
+        NpcKind::Merchant => SoundEvent::Footstep,
     }
 }
 
