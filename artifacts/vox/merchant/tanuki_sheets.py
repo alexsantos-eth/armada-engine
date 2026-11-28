@@ -13,7 +13,8 @@
 # facing (the 16 of PLAYER_FACINGS, east first, counter-clockwise), one column per pose.
 #
 #   idle  8 poses   a slow breath: the body swells, the head bobs, the arms sway a little
-#   walk  8 poses   two strides of four poses: the legs and arms swing, the body bobs
+#   walk  9 poses   column 0 stands; 1–8 are two strides of four poses: the legs and arms swing,
+#                   the body bobs (the game reads the walk sheet as 'standing + N poses')
 #
 # Out: lib/painted/merchant_{idle,walk}.png and lib/assets/merchant/{idle,walk}.json.
 import json
@@ -54,6 +55,7 @@ def sheets():
     for n in range(8):
         t = n / 8
         out["idle"].append(dict(breathe=math.sin(math.tau * t), swing=0.0, bob=0.0, sway=math.sin(math.tau * t)))
+    out["walk"].append(dict(breathe=0.0, swing=0.0, bob=0.0, sway=0.0))      # column 0 stands
     for n in range(8):
         t = n / 8
         out["walk"].append(dict(breathe=0.0, swing=math.sin(math.tau * t), bob=abs(math.cos(math.tau * t)), sway=0.0))
@@ -357,7 +359,10 @@ def main():
         print("ok", target)
         return
     os.makedirs(PAINTED, exist_ok=True)
+    only = [a for a in sys.argv[2:] if not a.startswith("--")]
     for sheet, plist in poses.items():
+        if only and sheet not in only:
+            continue
         columns = []
         for n, p in enumerate(plist):
             columns.append(render_cells(joints, holder, p, range(len(FACINGS)), scratch, f"{sheet}_{n}"))

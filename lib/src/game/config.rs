@@ -136,11 +136,20 @@ pub const RABBIT_ART: NpcArt = NpcArt {
     shadow_scale: 0.75,
 };
 
+/// The market merchant, a tanuki: standing by his stall and strolling a little, no hop.
+pub const MERCHANT_ART: NpcArt = NpcArt {
+    walk: "/assets/merchant/walk.png",
+    idle: "/assets/merchant/idle.png",
+    jump: None,
+    shadow_scale: 0.9,
+};
+
 /// The art of each animal.
 pub fn npc_art(kind: iso::npc::NpcKind) -> NpcArt {
     match kind {
         iso::npc::NpcKind::Crab => CRAB_ART,
         iso::npc::NpcKind::Rabbit => RABBIT_ART,
+        iso::npc::NpcKind::Merchant => MERCHANT_ART,
     }
 }
 /// Depth added to the jetpack over the body, so the pack draws right after it.

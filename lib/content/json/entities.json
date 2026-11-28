@@ -1901,6 +1901,26 @@
       }
     },
     {
+      "id": "merchant",
+      "npc": "merchant",
+      "asset": {
+        "sprite": "/assets/merchant/idle.json"
+      },
+      "shape": {
+        "height": 1,
+        "length": 1,
+        "axis": "x",
+        "collision": [
+          0
+        ]
+      },
+      "placement": {
+        "surfaces": [
+          "grass"
+        ]
+      }
+    },
+    {
       "id": "rabbit",
       "npc": "basic",
       "asset": {

@@ -2,8 +2,8 @@
 //! catalog, which says which entities have NPC logic.
 
 use super::wander::Npc;
-use crate::ai::{NpcKind, NpcLogic, basic};
-use crate::entities::EntityCatalog;
+use crate::ai::{NpcKind, NpcLogic, basic, merchant};
+use crate::entities::{Entity, EntityCatalog};
 use crate::grid::ChunkCoord;
 use crate::player::PlayerGround;
 
@@ -52,9 +52,25 @@ pub fn spawn_npcs<G: PlayerGround>(
     for kind in kinds_in(catalog) {
         match kind.logic() {
             NpcLogic::Basic => born.extend(basic::spawn(seed, chunk, ground, kind)),
+            // Born beside the stalls the chunk carries: see `spawn_merchants`.
+            NpcLogic::Merchant => {}
         }
     }
     born
+}
+
+/// The merchants born in a chunk whose placed entities include `stalls` (the ones that trade):
+/// none unless the catalog declares a merchant, otherwise one by each stall or cluster of stalls
+/// (see [`merchant::spawn`]). The same stalls and ground always give the same merchants.
+pub fn spawn_merchants<G: PlayerGround>(
+    ground: &G,
+    catalog: &EntityCatalog,
+    stalls: &[&Entity],
+) -> Vec<Npc> {
+    if !kinds_in(catalog).contains(&NpcKind::Merchant) {
+        return Vec::new();
+    }
+    merchant::spawn(ground, stalls)
 }
 
 #[cfg(test)]

@@ -6,6 +6,7 @@
 //! shared.
 
 pub mod basic;
+pub mod merchant;
 
 use serde::{Deserialize, Serialize};
 
@@ -17,6 +18,8 @@ pub enum NpcLogic {
     /// turns back at a wall. Which animal ([`NpcKind`]) decides the rest.
     #[default]
     Basic,
+    /// A tradesman: born beside a market stall, strolls a little and never leaves its side.
+    Merchant,
 }
 
 /// How a logic moves: its pace, its leash, its rests and its strolls, and what ground it may
@@ -66,6 +69,9 @@ pub enum NpcKind {
     Crab,
     /// The meadow rabbit (`"rabbit"`), of the `basic` logic.
     Rabbit,
+    /// The market merchant (`"merchant"`), of the `merchant` logic: a gnome-like tanuki who
+    /// minds a stall.
+    Merchant,
 }
 
 impl NpcKind {
@@ -74,6 +80,7 @@ impl NpcKind {
         match id {
             "crab" => Some(NpcKind::Crab),
             "rabbit" => Some(NpcKind::Rabbit),
+            "merchant" => Some(NpcKind::Merchant),
             _ => None,
         }
     }
@@ -82,6 +89,7 @@ impl NpcKind {
     pub fn logic(self) -> NpcLogic {
         match self {
             NpcKind::Crab | NpcKind::Rabbit => NpcLogic::Basic,
+            NpcKind::Merchant => NpcLogic::Merchant,
         }
     }
 
@@ -90,6 +98,7 @@ impl NpcKind {
         match self {
             NpcKind::Crab => basic::crab::ANIMAL,
             NpcKind::Rabbit => basic::rabbit::ANIMAL,
+            NpcKind::Merchant => merchant::ANIMAL,
         }
     }
 

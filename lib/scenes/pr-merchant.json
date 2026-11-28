@@ -1,0 +1,18 @@
+{
+  "world": "procedural",
+  "window": [1280, 800],
+  "zoom": 1.6,
+  "phase": "day",
+  "centre": [298, 209],
+  "player": [296, 207],
+  "steps": [
+    "settle",
+    { "shot": "merchant-0.png" },
+    { "wait": { "frames": 120 } },
+    { "shot": "merchant-1.png" },
+    { "wait": { "frames": 120 } },
+    { "shot": "merchant-2.png" }
+  ],
+  "out": "shots",
+  "maxFrames": 1500
+}
